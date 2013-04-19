@@ -6,7 +6,7 @@ Demonio HandBand de control de acceso
 Definición del proyecto
 -----------------------
 
-Construcción de un demonio UNIX para controlar la impresión, venta y validación de pulseras de identificación.
+Construcción de un demonio UNIX para controlar la impresión, venta y validación de pulseras de identificación para la empresa [HandBand](http://www.handband.cl/).
 
 Estructura de directorios
 -------------------------
