@@ -9,12 +9,14 @@ import time
 import ConfigParser
 import elaphe
 import cups
+import os
 
 #third party libs
 from daemon import runner
 import MySQLdb
 
-
+#WDIR="/usr/share/handbandd/"
+WDIR="/home/jcanales/handband/src/"
 CONFIGFILE="configuracion.ini"
 
 class App():
@@ -23,15 +25,22 @@ class App():
         self.stdin_path = '/dev/null'
         self.stdout_path = '/dev/tty'
         self.stderr_path = '/dev/tty'
-        self.pidfile_path =  '/var/run/handhandd/handbandd.pid'
+        self.pidfile_path =  '/var/run/handbandd/handbandd.pid'
         self.pidfile_timeout = 5
         self.cfg = ConfigParser.ConfigParser()
         self.dbh = None
         self.cups_conn = cups.Connection()
         self.printer = None
+
     def run(self):
         try:
-            self.cfg.read(CONFIGFILE)
+            os.chdir(WDIR)
+
+
+            logger.info("Demonio iniciado. CWD: %s" % (os.getcwd()))
+
+            if len(self.cfg.read(CONFIGFILE)) == 0:
+                raise Exception("Archivo de configuracion no encontrado.")
 
             logger.info("Archivo de configuración leído")
 
@@ -49,7 +58,7 @@ class App():
             logger.info("Buscando impresoras")
 
             if len(printers) == 0:
-                raise Exception("No hay impresoras conectadas")
+                raise Exception("No hay impresoras instaladas en el sistema")
 
             for prt in printers:
                 logger.info("Impresora encontrada: %s (%s)" % (prt, printers[prt]["device-uri"]))
@@ -80,6 +89,8 @@ class App():
                     # IMPRIMIR
 
                     crs.execute("UPDATE pulseras SET impreso = true WHERE id = %d" % (id_pulsera))
+                else:
+                    logger.info("No hay pulseras pendientes.")
 
 
                 time.sleep(0.5) # Medio segundo de espera entre polls
@@ -92,8 +103,7 @@ class App():
             logger.error("Ha ocurrido un error en la base de datos: %s" % (str(de)))
         except Exception as e:
             logger.error(e)
-
-        finally:
+	logger.info("Finalizando")
 
 
 
