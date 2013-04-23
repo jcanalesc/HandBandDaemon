@@ -1,3 +1,5 @@
+DROP DATABASE IF EXISTS handband;
+DROP USER 'testuser'@'localhost'
 CREATE DATABASE handband;
 GRANT ALL ON handband.* TO 'testuser'@'localhost' IDENTIFIED BY 'handband';
 USE handband;

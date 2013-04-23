@@ -7,9 +7,9 @@
 import logging
 import time
 import ConfigParser
-import elaphe
 import cups
 import os
+import Code128b
 
 #third party libs
 from daemon import runner
@@ -31,6 +31,18 @@ class App():
         self.dbh = None
         self.cups_conn = cups.Connection()
         self.printer = None
+
+    def generaImagen(barcode_img):
+        lienzo = Image.new("1",(1710+780, 300), 1)
+        w,h = barcode_img.size
+        b = img.convert("1")
+        achique = 0.66
+        fact = (300.0*achique)/h
+        b = b.resize((int(w*fact),int(h*fact)))
+        w,h = b.size
+        topm = (lienzo.size[1] - h)/2
+        return lienzo.copy().paste(b, (0, topm, w, h+topm))
+
 
     def run(self):
         try:
@@ -64,10 +76,11 @@ class App():
                 logger.info("Impresora encontrada: %s (%s)" % (prt, printers[prt]["device-uri"]))
 
             # seleccionar impresora de trabajo
-            nombre = "Impresora"
+            nombre = self.cfg.get("Settings","DefaultPrinter")
+
             self.printer = printers[nombre]
 
-            logger.info("Seleccionando impresora %s" % (self.printer))
+            logger.info("Seleccionando impresora %s" % (self.printer["printer-info"]))
             
             crs = self.dbh.cursor()
 
@@ -79,21 +92,32 @@ class App():
                 # 2. Verificar la conexión a la impresora
                 # 3. Hacer polling (cada 1 seg?) a la base de datos en busca de elementos con el estado "Vendido, no impreso"
                 # 4. Generar un código y enviarlo a la impresora.
-                crs.execute("SELECT id, codigo FROM pulseras WHERE impreso = false")
+
+                lines = crs.execute("SELECT id, codigo FROM pulseras WHERE impreso = false")
 
                 for row in crs.fetchall():
 
                     id_pulsera = row[0]
                     codigo_pulsera = row[1]
 
+                    barcode = Code128b.code128_image(str(codigo_pulsera))
+
+                    logger.info("Imprimiendo pulsera: %s - ID: %d" % (str(codigo_pulsera), id_pulsera))
+
                     # IMPRIMIR
 
+                    img = generaImagen(barcode)
+
+                    img.save("tmp/tmpfile_%s.png" % codigo_pulsera)
+
+                    self.cups_conn.printFile(self.printer['printer-info'], "tmpfile.png","job_"+str(codigo_pulsera), 
+                        {"media":"Custom.1x8.85in","orientation-requested":"4"})
+
                     crs.execute("UPDATE pulseras SET impreso = true WHERE id = %d" % (id_pulsera))
-                else:
-                    logger.info("No hay pulseras pendientes.")
 
+                    logger.info("Pulsera %s (ID: %d) impresa. Base de datos actualizada." % (str(codigo_pulsera), id_pulsera))
 
-                time.sleep(0.5) # Medio segundo de espera entre polls
+                time.sleep(1) # un segundo
 
         except ConfigParser.ParsingError as pe:
             logger.error("Archivo de configuración inexistente o inválido:")
@@ -108,7 +132,7 @@ class App():
 
 
 app = App()
-logger = logging.getLogger("DaemonLog")
+logger = logging.getLogger("Demonio HandBand")
 logger.setLevel(logging.INFO)
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 handler = logging.FileHandler("/var/log/handbandd/handbandd.log")

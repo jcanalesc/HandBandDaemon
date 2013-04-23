@@ -23,7 +23,6 @@ Dependencias
 
 [Python LockFile](https://pypi.python.org/pypi/lockfile/0.9.1)
 [Python Daemon](https://pypi.python.org/pypi/python-daemon/)
-[Elaphe](https://pypi.python.org/pypi/elaphe/)
 [PyCUPS](https://pypi.python.org/pypi/pycups)
 [MySQL for Python](http://sourceforge.net/projects/mysql-python/)
 
