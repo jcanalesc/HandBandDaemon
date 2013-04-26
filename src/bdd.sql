@@ -8,4 +8,4 @@ CREATE TABLE pulseras (
 	codigo varchar(60),
 	impreso boolean default false,
 	vendido boolean default true
-);
+) ENGINE=MyISAM;

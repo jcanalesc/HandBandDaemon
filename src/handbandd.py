@@ -10,9 +10,10 @@ import ConfigParser
 import cups
 import os
 import Code128b
-
+from subprocess import call
 #third party libs
 from daemon import runner
+from PIL import Image
 import MySQLdb
 
 #WDIR="/usr/share/handbandd/"
@@ -32,16 +33,18 @@ class App():
         self.cups_conn = cups.Connection()
         self.printer = None
 
-    def generaImagen(barcode_img):
+    def generaImagen(self,barcode_img):
         lienzo = Image.new("1",(1710+780, 300), 1)
         w,h = barcode_img.size
-        b = img.convert("1")
+        b = barcode_img.convert("1")
         achique = 0.66
         fact = (300.0*achique)/h
         b = b.resize((int(w*fact),int(h*fact)))
         w,h = b.size
         topm = (lienzo.size[1] - h)/2
-        return lienzo.copy().paste(b, (0, topm, w, h+topm))
+        l2 = lienzo.copy()
+        l2.paste(b, (30, topm, w+30, h+topm))
+        return l2
 
 
     def run(self):
@@ -84,6 +87,11 @@ class App():
             
             crs = self.dbh.cursor()
 
+            bthickness = int(self.cfg.get("Barcode", "Thickness"))
+            bheight = int(self.cfg.get("Barcode", "Height"))
+
+            
+
             while True:
                 #Main code goes here ...
                 #Note that logger level needs to be set to logging.DEBUG before this shows up in the logs
@@ -97,21 +105,34 @@ class App():
 
                 for row in crs.fetchall():
 
+                    """
+                    Problema:
+                    Multiples peticiones de impresión rápidas hacían que la impresora enviara pulseras en blanco. Posible problema con
+                    el driver USB.
+                    Solucion:
+                    Reiniciar el dispositivo USB.
+                    """
+                    call(["usb_modeswitch -R -v 0a5f -p 008b"], shell=True)
+
                     id_pulsera = row[0]
                     codigo_pulsera = row[1]
 
-                    barcode = Code128b.code128_image(str(codigo_pulsera))
+                    barcode = Code128b.code128_image(str(codigo_pulsera), bheight, bthickness)
 
                     logger.info("Imprimiendo pulsera: %s - ID: %d" % (str(codigo_pulsera), id_pulsera))
 
                     # IMPRIMIR
 
-                    img = generaImagen(barcode)
+                    img = self.generaImagen(barcode)
 
                     img.save("tmp/tmpfile_%s.png" % codigo_pulsera)
 
-                    self.cups_conn.printFile(self.printer['printer-info'], "tmpfile.png","job_"+str(codigo_pulsera), 
-                        {"media":"Custom.1x8.85in","orientation-requested":"4"})
+                    res = self.cups_conn.printFile(self.printer['printer-info'], 
+                            os.getcwd() + "/tmp/tmpfile_%s.png" % codigo_pulsera ,
+                            "job_"+str(codigo_pulsera)+time.strftime("%Y%m%d%H%M%S"), 
+                            {"media":"Custom.1x8.85in","orientation-requested":"4"})
+
+                    logger.info("[cups]: %s", str(res))
 
                     crs.execute("UPDATE pulseras SET impreso = true WHERE id = %d" % (id_pulsera))
 
