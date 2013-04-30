@@ -65,6 +65,7 @@ class App():
             user = self.cfg.get("Database", "Username")
             pswd = self.cfg.get("Database", "Password")
             dbn = self.cfg.get("Database", "Dbname")
+            table = self.cfg.get("Database", "Tablename")
 
             self.dbh = MySQLdb.connect(host=host, user=user, passwd=pswd, db=dbn)
 
@@ -75,14 +76,17 @@ class App():
             logger.info("Buscando impresoras")
 
             if len(printers) == 0:
-                raise Exception("No hay impresoras instaladas en el sistema")
+                raise Exception("No hay impresoras instaladas en el sistema.")
 
             imp = []
 
             for prt in printers:
+                if printers[prt]["printer-state"] != 3:
+                    continue
                 imp.append(str(prt))
                 logger.info("Impresora encontrada: %s (%s)" % (prt, printers[prt]["device-uri"]))
-
+            if len(imp) == 0:
+                raise Exception("No hay impresoras conectadas al equipo.")
             # seleccionar impresora de trabajo
 
             self.printer = printers[imp[0]]
@@ -105,7 +109,7 @@ class App():
                 # 3. Hacer polling (cada 1 seg?) a la base de datos en busca de elementos con el estado "Vendido, no impreso"
                 # 4. Generar un código y enviarlo a la impresora.
 
-                lines = crs.execute("SELECT id, codigo FROM pulseras WHERE impreso = false")
+                lines = crs.execute("SELECT id, codigo FROM `%s`.`%s` WHERE estado = 1" % (dbn, table))
 
                 for row in crs.fetchall():
 
@@ -141,9 +145,11 @@ class App():
 
                     logger.info("[cups]: %s", str(res))
 
-                    crs.execute("UPDATE pulseras SET impreso = true WHERE id = %d" % (id_pulsera))
+                    crs.execute("UPDATE `%s`.`%s` SET estado = 2 WHERE id = %d" % (dbn, table, id_pulsera))
 
                     logger.info("Pulsera %s (ID: %d) impresa. Base de datos actualizada." % (str(codigo_pulsera), id_pulsera))
+
+                crs.commit()
 
                 time.sleep(1) # un segundo
 

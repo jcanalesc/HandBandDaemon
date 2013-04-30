@@ -1,10 +1,11 @@
-DROP DATABASE IF EXISTS handband;
-CREATE DATABASE handband;
-GRANT ALL ON handband.* TO 'testuser'@'localhost' IDENTIFIED BY 'handband';
-USE handband;
-CREATE TABLE pulseras (
-	id INTEGER PRIMARY KEY AUTO_INCREMENT,
-	codigo varchar(60),
-	impreso boolean default false,
-	vendido boolean default true
-) ENGINE=MyISAM;
+CREATE DATABASE IF NOT EXISTS `constitucion`;
+CREATE  TABLE IF NOT EXISTS `constitucion`.`codigos` (
+  `id` INT NOT NULL AUTO_INCREMENT ,
+  `codigo` VARCHAR(255) NOT NULL ,
+  `segmento` TINYINT NOT NULL DEFAULT 0 ,
+  `estado` TINYINT NOT NULL DEFAULT 0 ,
+  `fecha_venta` TIMESTAMP ,
+  PRIMARY KEY (`id`) )
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8
+COLLATE = utf8_general_ci;

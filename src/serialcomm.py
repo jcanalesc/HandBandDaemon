@@ -30,7 +30,6 @@ def getParts(s):
 	d['ingresos'] = int(resto[1][1:])
 	d['salidas'] = int(resto[2][1:])
 	d['no_pasos'] = int(resto[3][1:-2])
-	d['lrc'] = resto[3][-2:]
 
 	return d
 
