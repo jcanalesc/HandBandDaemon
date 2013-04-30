@@ -10,15 +10,17 @@ import ConfigParser
 import cups
 import os
 import Code128b
-from subprocess import call
+import subprocess
 #third party libs
 from daemon import runner
 from PIL import Image
 import MySQLdb
 
 #WDIR="/usr/share/handbandd/"
-WDIR="/home/jcanales/handband/src/"
+WDIR="/usr/share/handbandd/"
 CONFIGFILE="configuracion.ini"
+
+
 
 class App():
     
@@ -75,13 +77,15 @@ class App():
             if len(printers) == 0:
                 raise Exception("No hay impresoras instaladas en el sistema")
 
+            imp = []
+
             for prt in printers:
+                imp.append(str(prt))
                 logger.info("Impresora encontrada: %s (%s)" % (prt, printers[prt]["device-uri"]))
 
             # seleccionar impresora de trabajo
-            nombre = self.cfg.get("Settings","DefaultPrinter")
 
-            self.printer = printers[nombre]
+            self.printer = printers[imp[0]]
 
             logger.info("Seleccionando impresora %s" % (self.printer["printer-info"]))
             
@@ -112,7 +116,7 @@ class App():
                     Solucion:
                     Reiniciar el dispositivo USB.
                     """
-                    call(["usb_modeswitch -R -v 0a5f -p 008b"], shell=True)
+                    subprocess.call(["usb_modeswitch -R -v 0a5f -p 008b > /dev/null"], shell=True)
 
                     id_pulsera = row[0]
                     codigo_pulsera = row[1]
@@ -125,10 +129,13 @@ class App():
 
                     img = self.generaImagen(barcode)
 
-                    img.save("tmp/tmpfile_%s.png" % codigo_pulsera)
+                    rutaarchivo = os.getcwd() + "/tmp/tmpfile_%s.png" % codigo_pulsera
 
-                    res = self.cups_conn.printFile(self.printer['printer-info'], 
-                            os.getcwd() + "/tmp/tmpfile_%s.png" % codigo_pulsera ,
+                    img.save(rutaarchivo)
+
+                    logger.info("Enviando archivo %s" % rutaarchivo)
+                    res = self.cups_conn.printFile(imp[0],
+                             rutaarchivo,
                             "job_"+str(codigo_pulsera)+time.strftime("%Y%m%d%H%M%S"), 
                             {"media":"Custom.1x8.85in","orientation-requested":"4"})
 
