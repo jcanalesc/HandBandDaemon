@@ -6,6 +6,8 @@ CREATE  TABLE IF NOT EXISTS `constitucion`.`codigos` (
   `estado` TINYINT NOT NULL DEFAULT 0 ,
   `fecha_venta` TIMESTAMP ,
   PRIMARY KEY (`id`) )
-ENGINE = InnoDB
+ENGINE = MyISAM
 DEFAULT CHARACTER SET = utf8
 COLLATE = utf8_general_ci;
+
+GRANT ALL ON `constitucion`.`codigos` TO 'testuser'@'localhost' IDENTIFIED BY 'handband';

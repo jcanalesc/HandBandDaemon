@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# To kick off the script, run the following from the python directory:
-#   PYTHONPATH=`pwd` python testdaemon.py start
-
 #standard python libs
 import logging
 import time
@@ -13,14 +10,19 @@ import Code128b
 import subprocess
 #third party libs
 from daemon import runner
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import MySQLdb
 
 #WDIR="/usr/share/handbandd/"
 WDIR="/usr/share/handbandd/"
 CONFIGFILE="configuracion.ini"
 
+NO_HABILITADO = 0
+HABILITADO_PARA_IMPRESION = 1
+IMPRESO = 2
 
+## TODO: agregar indicador si el estado de la impresora cambia (enchufada/desenchufada o encendida/apagada). 
+## Recordarle al usuario que los trabajos se imprimirán cuando se restablezca la conexión.
 
 class App():
     
@@ -34,9 +36,13 @@ class App():
         self.dbh = None
         self.cups_conn = cups.Connection()
         self.printer = None
+        self.font = ImageFont.truetype(WDIR+"BebasNeue.otf", 60)
+        self.segmentos = []
+        self.logo = {}
 
-    def generaImagen(self,barcode_img):
+    def generaImagen(self,barcode_img, segmento, fechaventa):
         lienzo = Image.new("1",(1710+780, 300), 1)
+
         w,h = barcode_img.size
         b = barcode_img.convert("1")
         achique = 0.66
@@ -44,9 +50,34 @@ class App():
         b = b.resize((int(w*fact),int(h*fact)))
         w,h = b.size
         topm = (lienzo.size[1] - h)/2
-        l2 = lienzo.copy()
-        l2.paste(b, (30, topm, w+30, h+topm))
-        return l2
+        # pegar codigo de barras
+        lienzo.paste(b, (30, topm, w+30, h+topm))
+        # pegar asignacion (normal-pref-vip)
+        asignacion = Image.new("1", (300,300), 1)
+        drawer = ImageDraw.Draw(asignacion)
+
+        tipo_asignacion = self.segmentos[segmento]
+
+        drawer.text((0, 140), tipo_asignacion, font=self.font)
+
+        lienzo.paste(asignacion,(30+w+10, 0, 30+w+310, 300))
+
+        #pegar logo
+
+        lienzo.paste(self.logo_img, (30+w+310+10, 0, 30+w+310+10+self.logo['w'], self.logo['h']))
+
+        #pegar fechahora
+
+        fechahora = Image.new("1", (400,300), 1)
+        drawer = ImageDraw.Draw(fechahora)
+        drawer.text((0,20), "Emitido el", font=self.font)
+        fechaventap = fechaventa.split(" ")
+        drawer.text((0,120), fechaventap[0], font=self.font)
+        drawer.text((0,180), fechaventap[1], font=self.font)
+
+        lienzo.paste (fechahora, (30+w+310+10+self.logo['w']+10, 0, 30+w+310+10+self.logo['w']+10+400, 300))
+
+        return lienzo
 
 
     def run(self):
@@ -61,6 +92,14 @@ class App():
 
             logger.info("Archivo de configuración leído")
 
+            self.segmentos = self.cfg.get("Segment", "Options").split(",")
+            self.logo['file'] = self.cfg.get("Logo", "File")
+            self.logo['w'] = int(self.cfg.get("Logo", "Width"))
+            self.logo['h'] = int(self.cfg.get("Logo", "Height"))
+
+            self.logo_img = Image.open(self.logo['file']).convert("1")
+
+            self.logo_img = self.logo_img.resize((self.logo['w'], self.logo['h']))
             host = self.cfg.get("Database", "Host")
             user = self.cfg.get("Database", "Username")
             pswd = self.cfg.get("Database", "Password")
@@ -93,7 +132,7 @@ class App():
 
             logger.info("Seleccionando impresora %s" % (self.printer["printer-info"]))
             
-            crs = self.dbh.cursor()
+            
 
             bthickness = int(self.cfg.get("Barcode", "Thickness"))
             bheight = int(self.cfg.get("Barcode", "Height"))
@@ -101,16 +140,14 @@ class App():
             
 
             while True:
-                #Main code goes here ...
-                #Note that logger level needs to be set to logging.DEBUG before this shows up in the logs
                 # TODO:
                 # 1. Conectarse a la base de datos, con datos de un archivo de configuracion
                 # 2. Verificar la conexión a la impresora
                 # 3. Hacer polling (cada 1 seg?) a la base de datos en busca de elementos con el estado "Vendido, no impreso"
                 # 4. Generar un código y enviarlo a la impresora.
-
-                lines = crs.execute("SELECT id, codigo FROM `%s`.`%s` WHERE estado = 1" % (dbn, table))
-
+                # logger.info("SELECT id, codigo FROM `%s` WHERE estado = 0" % (table))
+                crs = self.dbh.cursor()
+                lines = crs.execute("SELECT id, codigo, segmento,fecha_venta  FROM `%s` WHERE estado = %f" % (table, HABILITADO_PARA_IMPRESION))
                 for row in crs.fetchall():
 
                     """
@@ -120,10 +157,12 @@ class App():
                     Solucion:
                     Reiniciar el dispositivo USB.
                     """
-                    subprocess.call(["usb_modeswitch -R -v 0a5f -p 008b > /dev/null"], shell=True)
+                    #subprocess.call(["usb_modeswitch -R -v 0a5f -p 008b > /dev/null"], shell=True)
 
                     id_pulsera = row[0]
                     codigo_pulsera = row[1]
+                    segmento = int(row[2])
+                    fechaventa = row[3]
 
                     barcode = Code128b.code128_image(str(codigo_pulsera), bheight, bthickness)
 
@@ -131,7 +170,7 @@ class App():
 
                     # IMPRIMIR
 
-                    img = self.generaImagen(barcode)
+                    img = self.generaImagen(barcode, segmento, fechaventa)
 
                     rutaarchivo = os.getcwd() + "/tmp/tmpfile_%s.png" % codigo_pulsera
 
@@ -145,11 +184,11 @@ class App():
 
                     logger.info("[cups]: %s", str(res))
 
-                    crs.execute("UPDATE `%s`.`%s` SET estado = 2 WHERE id = %d" % (dbn, table, id_pulsera))
+                    crs.execute("UPDATE `%s` SET estado = %d WHERE id = %d" % (table, IMPRESO,  id_pulsera))
 
                     logger.info("Pulsera %s (ID: %d) impresa. Base de datos actualizada." % (str(codigo_pulsera), id_pulsera))
-
-                crs.commit()
+                self.dbh.commit()
+                crs.close()
 
                 time.sleep(1) # un segundo
 
@@ -164,16 +203,16 @@ class App():
 	logger.info("Finalizando")
 
 
+if __name__ == "__main__":
+    app = App()
+    logger = logging.getLogger("Demonio HandBand")
+    logger.setLevel(logging.INFO)
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    handler = logging.FileHandler("/var/log/handbandd/handbandd.log")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
-app = App()
-logger = logging.getLogger("Demonio HandBand")
-logger.setLevel(logging.INFO)
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-handler = logging.FileHandler("/var/log/handbandd/handbandd.log")
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-
-daemon_runner = runner.DaemonRunner(app)
-#This ensures that the logger file handle does not get closed during daemonization
-daemon_runner.daemon_context.files_preserve=[handler.stream]
-daemon_runner.do_action()
+    daemon_runner = runner.DaemonRunner(app)
+    #This ensures that the logger file handle does not get closed during daemonization
+    daemon_runner.daemon_context.files_preserve=[handler.stream]
+    daemon_runner.do_action()

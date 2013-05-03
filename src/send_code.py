@@ -10,9 +10,12 @@ cn =  MySQLdb.connect(host=cp.get("Database", "Host"),
 					  db=cp.get("Database", "Dbname"))
 dbh = cn.cursor()
 
+table = cp.get("Database", "Tablename")
+
 if len(sys.argv) > 1:
 	for elem in sys.argv[1:]:
+		elem_code, elem_seg = elem.split(":")
 		print("sending code %s" % elem)
-		dbh.execute("insert into pulseras (codigo) values (%s)", elem)
-
+		dbh.execute("insert into %s (estado,codigo, segmento) values (1,%s,%d)" % (table,elem_code,int(elem_seg)))
+cn.commit()
 dbh.close()
