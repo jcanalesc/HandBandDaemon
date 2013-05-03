@@ -7,12 +7,12 @@ import ConfigParser
 def getFromSerial(cx):
 	message = "";
 	while True:
-		[x,y,z] = select.select([conn], [], [])
-		buff = x[0]
-		msg = buff.read(buff.inWaiting())
+		msg = cx.read(1)
 		message += msg
-		if msg[-1] == "\r":
-			return ''.join(s for s in message if s in string.printable)
+		if msg == "\r":
+			ans = ''.join(s for s in message if s in string.printable)
+			log_this("respuesta: " + ans)
+			return ans
 		
 
 def getParts(s):
@@ -54,6 +54,7 @@ def reject(comm_dict):
 	res = getFromSerial(conn)
 
 	if res == sent_str:
+		log_this("Comando aceptado: negar acceso a " + comm_dict['codigo'])
 		return True
 	else:
 		return False
@@ -63,7 +64,13 @@ def accept(comm_dict):
 	res = getFromSerial(conn)
 
 	if res == sent_str:
-		return True
+		log_this("Comando aceptado: dar acceso a " + comm_dict['codigo'])
+		# esperar la solicitud de paso:
+		res = getParts(getFromSerial(conn))
+		if res['solicitud'] == "S":
+			return True
+		else:
+			return False
 	else:
 		return False
 
@@ -91,16 +98,18 @@ try:
 	table = cp.get("Database", "Tablename")
 	while True:
 		m = getParts(getFromSerial(conn))
-		codigo_obtenido = m['codigo']
-		count = dbh.execute("select estado, fecha_venta from %s where codigo = '%s'" % (table, codigo_obtenido))
-		if count == 0:
-			reject(m) or log_this("Error de comunicacion")
-		else:
-			linea = dbh.fetch_row()
-			if linea[0] != "0": # codigo no vendido aun
+		if m['solicitud'] == "0": # si es una solicitud de entrada
+			codigo_obtenido = m['codigo']
+			count = dbh.execute("select estado, fecha_venta from %s where codigo = '%s'" % (table, codigo_obtenido))
+			if count == 0:
 				reject(m) or log_this("Error de comunicacion")
 			else:
-				accept(m) or log_this("Error de comunicacion")
+				linea = dbh.fetchone()
+				if linea[0] == "0": # codigo no vendido aun
+					reject(m) or log_this("Error de comunicacion")
+				else:
+					accept(m) or log_this("Error de comunicacion")
+
 
 	dbh.close()
 	db.close()
