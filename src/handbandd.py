@@ -136,6 +136,7 @@ class App():
 
             for seg in self.segmentos:
                 if seg != "General":
+                    # Busco si el archivo de configuracion especifica impresoras para cada segmento especial
                     if self.cfg.has_option("Printers", seg):
                         sprt = self.cfg.get("Printers", seg)
                         if sprt in imp:
@@ -143,6 +144,7 @@ class App():
                             self.s_printers[seg] = sprt
                             if printers[sprt]['printer-state'] != 3:
                                 logger.warning("La impresora \"%s\" no esta lista. Las pulseras quedaran encoladas hasta que la impresora este lista." % sprt)
+
             bthickness = int(self.cfg.get("Barcode", "Thickness"))
             bheight = int(self.cfg.get("Barcode", "Height"))
 
