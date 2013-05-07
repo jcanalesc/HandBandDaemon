@@ -39,6 +39,7 @@ class App():
         self.font = ImageFont.truetype(WDIR+"BebasNeue.otf", 60)
         self.segmentos = []
         self.logo = {}
+        self.s_printers = {}
 
     def generaImagen(self,barcode_img, segmento, fechaventa):
         lienzo = Image.new("1",(1710+780, 300), 1)
@@ -93,6 +94,7 @@ class App():
             logger.info("Archivo de configuración leído")
 
             self.segmentos = self.cfg.get("Segment", "Options").split(",")
+
             self.logo['file'] = self.cfg.get("Logo", "File")
             self.logo['w'] = int(self.cfg.get("Logo", "Width"))
             self.logo['h'] = int(self.cfg.get("Logo", "Height"))
@@ -120,20 +122,27 @@ class App():
             imp = []
 
             for prt in printers:
-                if printers[prt]["printer-state"] != 3:
-                    continue
                 imp.append(str(prt))
                 logger.info("Impresora encontrada: %s (%s)" % (prt, printers[prt]["device-uri"]))
-            if len(imp) == 0:
-                raise Exception("No hay impresoras conectadas al equipo.")
             # seleccionar impresora de trabajo
 
-            self.printer = printers[imp[0]]
+            def_printer = self.cfg.get("Printers", "Default")
 
-            logger.info("Seleccionando impresora %s" % (self.printer["printer-info"]))
-            
-            
+            self.printer = printers[def_printer]
 
+            logger.info("Seleccionando impresora predeterminada %s" % (self.printer["printer-info"]))
+            if self.printer["printer-state"] != 3:
+                logger.warning("La impresora \"%s\" no esta lista. Las pulseras quedaran encoladas hasta que la impresora este lista." % def_printer)
+
+            for seg in self.segmentos:
+                if seg != "General":
+                    if self.cfg.has_option("Printers", seg):
+                        sprt = self.cfg.get("Printers", seg)
+                        if sprt in imp:
+                            logger.info("Seleccionando impresora especial para segmento %s: %s" % (seg, sprt))
+                            self.s_printers[seg] = sprt
+                            if printers[sprt]['printer-state'] != 3:
+                                logger.warning("La impresora \"%s\" no esta lista. Las pulseras quedaran encoladas hasta que la impresora este lista." % sprt)
             bthickness = int(self.cfg.get("Barcode", "Thickness"))
             bheight = int(self.cfg.get("Barcode", "Height"))
 
@@ -164,20 +173,25 @@ class App():
                     segmento = int(row[2])
                     fechaventa = row[3]
 
+                    impresora_objetivo = self.printer
+                    if self.segmentos[segmento] in self.s_printers:
+                        impresora_objetivo = self.s_printers[self.segmentos[segmento]]
+
+
                     barcode = Code128b.code128_image(str(codigo_pulsera), bheight, bthickness)
 
-                    logger.info("Imprimiendo pulsera: %s - ID: %d" % (str(codigo_pulsera), id_pulsera))
+                    logger.info("Imprimiendo pulsera: %s - ID: %d Segmento: " % (str(codigo_pulsera), id_pulsera, self.segmentos[segmento]))
 
                     # IMPRIMIR
 
-                    img = self.generaImagen(barcode, segmento, fechaventa)
+                    img = self.generaImagen(barcode, segmento, str(fechaventa))
 
                     rutaarchivo = os.getcwd() + "/tmp/tmpfile_%s.png" % codigo_pulsera
 
                     img.save(rutaarchivo)
 
                     logger.info("Enviando archivo %s" % rutaarchivo)
-                    res = self.cups_conn.printFile(imp[0],
+                    res = self.cups_conn.printFile(impresora_objetivo],
                              rutaarchivo,
                             "job_"+str(codigo_pulsera)+time.strftime("%Y%m%d%H%M%S"), 
                             {"media":"Custom.1x8.85in","orientation-requested":"4"})
@@ -186,7 +200,11 @@ class App():
 
                     crs.execute("UPDATE `%s` SET estado = %d WHERE id = %d" % (table, IMPRESO,  id_pulsera))
 
-                    logger.info("Pulsera %s (ID: %d) impresa. Base de datos actualizada." % (str(codigo_pulsera), id_pulsera))
+                    estado_imp = self.cups_conn.getPrinterAttributes(name=impresora_objetivo, requested_attributes=['printer-state'])
+                    if estado_imp['printer-state'] != 3:
+                        logger.info("Pulsera %s (ID: %d) (Segmento: %s) encolada para impresion. Se imprimira cuando la impresora este lista. Base de datos actualizada." % (str(codigo_pulsera), id_pulsera, self.segmentos[segmento]))
+                    else:
+                        logger.info("Pulsera %s (ID: %d) (Segmento: %s) impresa. Base de datos actualizada." % (str(codigo_pulsera), id_pulsera, self.segmentos[segmento]))
                 self.dbh.commit()
                 crs.close()
 
