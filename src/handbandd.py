@@ -42,6 +42,8 @@ class App():
         self.s_printers = {}
 
     def generaImagen(self,barcode_img, segmento, fechaventa):
+        # TODO: Ordenar esta cosa
+
         lienzo = Image.new("1",(1710+780, 300), 1)
 
         w,h = barcode_img.size
@@ -131,7 +133,7 @@ class App():
             self.printer = printers[def_printer]
 
             logger.info("Seleccionando impresora predeterminada %s" % (self.printer["printer-info"]))
-            if self.printer["printer-state"] != 3:
+            if self.printer["printer-state"] not in [3,4]:
                 logger.warning("La impresora \"%s\" no esta lista. Las pulseras quedaran encoladas hasta que la impresora este lista." % def_printer)
 
             for seg in self.segmentos:
@@ -142,7 +144,7 @@ class App():
                         if sprt in imp:
                             logger.info("Seleccionando impresora especial para segmento %s: %s" % (seg, sprt))
                             self.s_printers[seg] = sprt
-                            if printers[sprt]['printer-state'] != 3:
+                            if printers[sprt]['printer-state'] not in [3,4]:
                                 logger.warning("La impresora \"%s\" no esta lista. Las pulseras quedaran encoladas hasta que la impresora este lista." % sprt)
 
             bthickness = int(self.cfg.get("Barcode", "Thickness"))
@@ -175,14 +177,14 @@ class App():
                     segmento = int(row[2])
                     fechaventa = row[3]
 
-                    impresora_objetivo = self.printer
+                    impresora_objetivo = def_printer
                     if self.segmentos[segmento] in self.s_printers:
                         impresora_objetivo = self.s_printers[self.segmentos[segmento]]
 
 
                     barcode = Code128b.code128_image(str(codigo_pulsera), bheight, bthickness)
 
-                    logger.info("Imprimiendo pulsera: %s - ID: %d Segmento: " % (str(codigo_pulsera), id_pulsera, self.segmentos[segmento]))
+                    logger.info("Imprimiendo pulsera: %s - ID: %d Segmento: %s " % (str(codigo_pulsera), id_pulsera, self.segmentos[segmento]))
 
                     # IMPRIMIR
 
@@ -193,7 +195,7 @@ class App():
                     img.save(rutaarchivo)
 
                     logger.info("Enviando archivo %s" % rutaarchivo)
-                    res = self.cups_conn.printFile(impresora_objetivo],
+                    res = self.cups_conn.printFile(impresora_objetivo,
                              rutaarchivo,
                             "job_"+str(codigo_pulsera)+time.strftime("%Y%m%d%H%M%S"), 
                             {"media":"Custom.1x8.85in","orientation-requested":"4"})
@@ -203,7 +205,8 @@ class App():
                     crs.execute("UPDATE `%s` SET estado = %d WHERE id = %d" % (table, IMPRESO,  id_pulsera))
 
                     estado_imp = self.cups_conn.getPrinterAttributes(name=impresora_objetivo, requested_attributes=['printer-state'])
-                    if estado_imp['printer-state'] != 3:
+                    
+                    if estado_imp['printer-state'] not in [3,4]:
                         logger.info("Pulsera %s (ID: %d) (Segmento: %s) encolada para impresion. Se imprimira cuando la impresora este lista. Base de datos actualizada." % (str(codigo_pulsera), id_pulsera, self.segmentos[segmento]))
                     else:
                         logger.info("Pulsera %s (ID: %d) (Segmento: %s) impresa. Base de datos actualizada." % (str(codigo_pulsera), id_pulsera, self.segmentos[segmento]))
@@ -219,7 +222,7 @@ class App():
         except MySQLdb.DatabaseError as de:
             logger.error("Ha ocurrido un error en la base de datos: %s" % (str(de)))
         except Exception as e:
-            logger.error(e)
+            logger.error(e.__class__.__name__ +":"+ str(e))
 	logger.info("Finalizando")
 
 
