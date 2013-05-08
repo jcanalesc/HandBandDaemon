@@ -21,7 +21,7 @@ NO_HABILITADO = 0
 HABILITADO_PARA_IMPRESION = 1
 IMPRESO = 2
 
-## TODO: agregar indicador si el estado de la impresora cambia (enchufada/desenchufada o encendida/apagada).
+## TODO: agregar indicador si el estado de la impresora cambia (enchufada/desenchufada o encendida/apagada). 
 ## Recordarle al usuario que los trabajos se imprimirán cuando se restablezca la conexión.
 
 class App():
