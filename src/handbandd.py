@@ -36,12 +36,13 @@ class App():
         self.dbh = None
         self.cups_conn = cups.Connection()
         self.printer = None
-        self.font = ImageFont.truetype(WDIR+"BebasNeue.otf", 60)
+        self.font = ImageFont.truetype(WDIR+"BebasNeue.otf", 80)
+        self.font_debug = ImageFont.truetype(WDIR+"BebasNeue.otf", 40)
         self.segmentos = []
         self.logo = {}
         self.s_printers = {}
 
-    def generaImagen(self,barcode_img, segmento, fechaventa):
+    def generaImagen(self,barcode_img, segmento, fechaventa, debug=False):
         # TODO: Ordenar esta cosa
 
         lienzo = Image.new("1",(1710+780, 300), 1)
@@ -61,7 +62,8 @@ class App():
 
         tipo_asignacion = self.segmentos[segmento]
 
-        drawer.text((0, 140), tipo_asignacion, font=self.font)
+        alt = int((300 - 80)/2)
+        drawer.text((0, alt), tipo_asignacion, font=self.font)
 
         lienzo.paste(asignacion,(30+w+10, 0, 30+w+310, 300))
 
@@ -73,15 +75,45 @@ class App():
 
         fechahora = Image.new("1", (400,300), 1)
         drawer = ImageDraw.Draw(fechahora)
-        drawer.text((0,20), "Emitido el", font=self.font)
+        #drawer.text((0,20), "Emitido el", font=self.font)
         fechaventap = fechaventa.split(" ")
-        drawer.text((0,120), fechaventap[0], font=self.font)
-        drawer.text((0,180), fechaventap[1], font=self.font)
+        alt = int((300 - 80*2)/2)
+        drawer.text((0,alt), fechaventap[0], font=self.font)
+        drawer.text((0,alt+80), fechaventap[1], font=self.font)
 
         lienzo.paste (fechahora, (30+w+310+10+self.logo['w']+10, 0, 30+w+310+10+self.logo['w']+10+400, 300))
 
+        if debug != False:
+            drawer = ImageDraw.Draw(lienzo)
+            tam_w, tam_h = self.font_debug.getsize(debug)
+            margen_izq = int((b.size[0] - tam_w) / 2) + 30
+            margen_sup = int((b.size[1] + 10)) + topm
+            drawer.text((margen_izq, margen_sup), debug, font=self.font_debug)
+
         return lienzo
 
+    def connect_to_database(self):
+        host = self.cfg.get("Database", "Host")
+        user = self.cfg.get("Database", "Username")
+        pswd = self.cfg.get("Database", "Password")
+        dbn = self.cfg.get("Database", "Dbname")
+        table = self.cfg.get("Database", "Tablename")
+
+        tries = 5 # -1 para intentar infinitamente
+
+        while (tries > 0 or tries == -1):
+            try:
+                logger.info("Conectando a la base de datos...")
+                self.dbh = MySQLdb.connect(host=host, user=user, passwd=pswd, db=dbn)
+                return True
+            except MySQLdb.InterfaceError as ie:
+                logger.info("Fallo la conexion: %s" % str(ie))
+
+            if tries > 1 or tries == -1:
+                logger.info("Reintentando conexion en 10 segundos...")
+            time.sleep(10)
+            tries = tries - 1
+        return False
 
     def run(self):
         try:
@@ -104,15 +136,13 @@ class App():
             self.logo_img = Image.open(self.logo['file']).convert("1")
 
             self.logo_img = self.logo_img.resize((self.logo['w'], self.logo['h']))
-            host = self.cfg.get("Database", "Host")
-            user = self.cfg.get("Database", "Username")
-            pswd = self.cfg.get("Database", "Password")
-            dbn = self.cfg.get("Database", "Dbname")
-            table = self.cfg.get("Database", "Tablename")
+           
+            conectado = self.connect_to_database()
 
-            self.dbh = MySQLdb.connect(host=host, user=user, passwd=pswd, db=dbn)
-
-            logger.info("Conectado a la base de datos")
+            if conectado:
+                logger.info("Conectado a la base de datos")
+            else:
+                raise Exception("No se logro realizar una conexion con la base de datos")
 
             printers = self.cups_conn.getPrinters()
 
@@ -150,8 +180,8 @@ class App():
             bthickness = int(self.cfg.get("Barcode", "Thickness"))
             bheight = int(self.cfg.get("Barcode", "Height"))
 
-            
-
+            table = self.cfg.get("Database", "Tablename")
+            crs = self.dbh.cursor()
             while True:
                 # TODO:
                 # 1. Conectarse a la base de datos, con datos de un archivo de configuracion
@@ -159,8 +189,8 @@ class App():
                 # 3. Hacer polling (cada 1 seg?) a la base de datos en busca de elementos con el estado "Vendido, no impreso"
                 # 4. Generar un código y enviarlo a la impresora.
                 # logger.info("SELECT id, codigo FROM `%s` WHERE estado = 0" % (table))
-                crs = self.dbh.cursor()
-                lines = crs.execute("SELECT id, codigo, segmento,fecha_venta  FROM `%s` WHERE estado = %f" % (table, HABILITADO_PARA_IMPRESION))
+                
+                lines = crs.execute("SELECT id, codigo, segmento,fecha_venta  FROM `%s` WHERE estado = %d" % (table, HABILITADO_PARA_IMPRESION))
                 for row in crs.fetchall():
 
                     """
@@ -187,8 +217,10 @@ class App():
                     logger.info("Imprimiendo pulsera: %s - ID: %d Segmento: %s " % (str(codigo_pulsera), id_pulsera, self.segmentos[segmento]))
 
                     # IMPRIMIR
-
-                    img = self.generaImagen(barcode, segmento, str(fechaventa))
+                    if codigo_pulsera[0] == "D":
+                        img = self.generaImagen(barcode, segmento, str(fechaventa), codigo_pulsera)
+                    else:
+                        img = self.generaImagen(barcode, segmento, str(fechaventa))
 
                     rutaarchivo = os.getcwd() + "/tmp/tmpfile_%s.png" % codigo_pulsera
 
@@ -201,7 +233,7 @@ class App():
                             {"media":"Custom.1x8.85in","orientation-requested":"4"})
 
                     logger.info("[cups]: %s", str(res))
-
+                    
                     crs.execute("UPDATE `%s` SET estado = %d WHERE id = %d" % (table, IMPRESO,  id_pulsera))
 
                     estado_imp = self.cups_conn.getPrinterAttributes(name=impresora_objetivo, requested_attributes=['printer-state'])
@@ -210,9 +242,8 @@ class App():
                         logger.info("Pulsera %s (ID: %d) (Segmento: %s) encolada para impresion. Se imprimira cuando la impresora este lista. Base de datos actualizada." % (str(codigo_pulsera), id_pulsera, self.segmentos[segmento]))
                     else:
                         logger.info("Pulsera %s (ID: %d) (Segmento: %s) impresa. Base de datos actualizada." % (str(codigo_pulsera), id_pulsera, self.segmentos[segmento]))
-                self.dbh.commit()
-                crs.close()
 
+                self.dbh.commit()
                 time.sleep(1) # un segundo
 
         except ConfigParser.ParsingError as pe:

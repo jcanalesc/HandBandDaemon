@@ -3,6 +3,7 @@ import select
 import string
 import MySQLdb
 import ConfigParser
+from datetime import datetime, timedelta
 
 def getFromSerial(cx):
 	message = "";
@@ -77,46 +78,56 @@ def accept(comm_dict):
 def log_this(text):
 	print "LOG: " + text
 
-try:
-	log_this("Inciando control de acceso")
-	conn = serial.Serial()
 
-	conn.baudrate = 38400
-	conn.port = "/dev/ttyUSB0"
-	#conn.nonblocking()
 
-	conn.open()
+if __name__ == "__main__":
+	try:
+		log_this("Inciando control de acceso")
+		conn = serial.Serial()
 
-	cp = ConfigParser.ConfigParser()
-	cp.read("configuracion.ini")
-	db =  MySQLdb.connect(host=cp.get("Database", "Host"),
-						  user=cp.get("Database", "Username"),
-						  passwd=cp.get("Database", "Password"),
-						  db=cp.get("Database", "Dbname"))
-	dbh = db.cursor()
+		conn.baudrate = 38400
+		conn.port = "/dev/ttyUSB0"
+		#conn.nonblocking()
 
-	table = cp.get("Database", "Tablename")
-	while True:
-		m = getParts(getFromSerial(conn))
-		if m['solicitud'] == "0": # si es una solicitud de entrada
-			codigo_obtenido = m['codigo']
-			count = dbh.execute("select estado, fecha_venta from %s where codigo = '%s'" % (table, codigo_obtenido))
-			if count == 0:
-				reject(m) or log_this("Error de comunicacion")
-			else:
-				linea = dbh.fetchone()
-				if linea[0] == "0": # codigo no vendido aun
+		conn.open()
+
+		cp = ConfigParser.ConfigParser()
+		cp.read("configuracion.ini")
+		db =  MySQLdb.connect(host=cp.get("Database", "Host"),
+							  user=cp.get("Database", "Username"),
+							  passwd=cp.get("Database", "Password"),
+							  db=cp.get("Database", "Dbname"))
+
+		table = cp.get("Database", "Tablename")
+		while True:
+			m = getParts(getFromSerial(conn))
+			if m['solicitud'] == "0": # entrada
+				codigo_obtenido = m['codigo']
+				dbh = db.cursor()
+				count = dbh.execute("select estado, fecha_venta from %s where codigo = '%s'" % (table, codigo_obtenido))
+				if count == 0:
+					print "Codigo no valido"
 					reject(m) or log_this("Error de comunicacion")
 				else:
-					accept(m) or log_this("Error de comunicacion")
-
-
-	dbh.close()
-	db.close()
-except serial.SerialException as se:
-	log_this("Problemas al intentar conectarse con la interfaz serial. (%s)" % str(se))
-except Exception as e:
-	log_this(("Problema: (%s) " % (e.__class__.__name__)) + str(e))
+					linea = dbh.fetchone()
+					if linea[0] == "0": # codigo no vendido aun
+						print "Codigo no vendido"
+						reject(m) or log_this("Error de comunicacion")
+					elif linea[1] + timedelta(hours=12) < datetime.today(): # codigo vencido
+						print "Codigo vencido"
+						reject(m) or log_this("Error de comunicacion")
+					else:
+						print "Codigo valido"
+						accept(m) or log_this("Error de comunicacion")
+				db.commit()
+				dbh.close()
+			else:
+				reject(m) or log_this("Error de comunicacion")
+		db.close()
+	except serial.SerialException as se:
+		log_this("Problemas al intentar conectarse con la interfaz serial. (%s)" % str(se))
+	except Exception as e:
+		log_this(("Problema: (%s) " % (e.__class__.__name__)) + str(e))
 
 
 
