@@ -1,4 +1,4 @@
-from flask import *
+from flask import Flask, render_template, jsonify
 import bdd
 
 app = Flask(__name__)
