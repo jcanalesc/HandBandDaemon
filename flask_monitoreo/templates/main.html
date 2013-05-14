@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Monitoreo HandBand</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <!-- Le styles -->
+    <link href="/static/bootstrap/css/bootstrap.css" rel="stylesheet">
+    <style type="text/css">
+      body {
+        padding-top: 60px;
+        padding-bottom: 40px;
+      }
+      .graph-placeholder
+      {
+      	height: 14em;
+      }
+    </style>
+    <link href="/static/bootstrap/css/bootstrap-responsive.css" rel="stylesheet">
+
+    <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+      <script src="/static/html5shiv.js"></script>
+    <![endif]-->
+  </head>
+
+  <body>
+
+    <div class="navbar navbar-inverse navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container">
+          <button type="button" class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="brand" href="#">Monitoreo</a>
+          <div class="nav-collapse collapse">
+            <ul class="nav">
+              <li class="active"><a href="#">Home</a></li>
+            </ul>
+            <img src="/static/logo.jpg" class="pull-right" style="height: 40px;">
+          </div><!--/.nav-collapse -->
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+
+      <!-- Main hero unit for a primary marketing message or call to action -->
+      <div class="row">
+      	<div class="well span4 offset4">
+      		<h2>Personas en el local: <span id="label-genteActual">0</span></h2>
+      	</div>
+      </div>
+      <div class="hero-unit">
+      	<div><h4>Historia de los últimos 60 segundos</h4></div>
+      	<div class="graph-placeholder">
+      	</div>
+
+      </div>
+      <div>
+      	
+      </div>
+
+      <!-- Example row of columns -->
+      <div class="row">
+        
+        <div class="span4">
+          <button class="btn btn-large btn-info" id="btn-salida">Salida</button>
+       </div>
+       <div class="span4">
+          <button class="btn btn-large btn-primary" id="btn-vaciar">Vaciar registros</button>
+        </div>
+        
+      </div>
+
+      <hr>
+
+      <footer>
+        <p>&copy; Hand Band Chile 2013</p>
+      </footer>
+
+    </div> <!-- /container -->
+
+    <!-- Le javascript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="/static/jquery-1.9.1.min.js"></script>
+    <script src="/static/bootstrap/js/bootstrap.min.js"></script>
+    <script src="/static/flot/jquery.flot.min.js"></script>
+    <script>
+
+    var genteActual = 0;
+    var maxGenteActual = 0;
+    var ndatos = 300;
+    var datos = [];
+    var hGrafico = null;
+
+    function check_bdd()
+    {
+    	var response = null;
+    	$.ajax({
+    		url: "/genteActual",
+			dataType: "json",
+			success: function(obj)
+			{
+				response = obj.res;
+			},
+    		async: false
+    	});
+    	return response;
+    }
+
+    function updateGrafico()
+    {
+    	datos = datos.slice(1);
+
+    	var gentebdd = check_bdd();
+    	if (gentebdd != null)
+    		genteActual = gentebdd;
+
+    	if (genteActual >= maxGenteActual)
+    		maxGenteActual = genteActual;
+    	datos.push(genteActual);
+
+    	$("#label-genteActual").html(genteActual);
+    	
+    	hGrafico = $.plot(".graph-placeholder", [obtPares()], {
+    		yaxis:
+    		{
+    			min: 0,
+    			max: maxGenteActual + 2
+    		},
+    		xaxis:
+    		{
+    			tickFormatter: function(val, obj)
+    			{
+    				var segundo = parseInt(val/5);
+    				if (val % 5 == 0)
+    					return segundo;
+    				else
+    					return "";
+    			}
+    		}
+    	});
+    }
+
+    function add()
+    {
+    	genteActual++;
+    	if (genteActual >= maxGenteActual)
+    		maxGenteActual = genteActual;
+    }
+
+    function remove()
+    {
+    	if (genteActual <= 0) return;
+    	$.ajax({
+    		url: "/emulaSalida",
+    		dataType: "json",
+    		success: function(obj)
+    		{
+    			if (obj.res != true)
+    				alert("Error: " + obj.error)
+
+    		}
+    	});
+    }
+    function vaciarRegistros()
+    {
+      $.ajax({
+        url: "/vaciar",
+        dataType: "json",
+        success: function(obj)
+        {
+          if (obj.res != true)
+            alert("Error: " + obj.error)
+        }
+      });
+    }
+
+    function obtPares()
+    {
+    	var res = [];
+    	for (var i = 0; i < datos.length; i++)
+    		res.push([i, datos[i]]);
+    	return res;
+
+    }
+
+    $(function()
+    {
+    	for(var i = 0; i < ndatos; i++)
+    		datos.push(null);
+
+    	hGrafico = $.plot(".graph-placeholder", [obtPares()]);
+    	setInterval("updateGrafico()", 200);
+
+    	// $("#btn-entrada").click(add);
+    	$("#btn-salida").click(remove);
+      $("#btn-vaciar").click(vaciarRegistros);
+    });
+    </script>
+  </body>
+</html>

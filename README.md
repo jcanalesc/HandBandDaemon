@@ -14,8 +14,8 @@ Estructura de directorios
 <dl>
   <dt>src</dt>
   <dd>En este directorio está el código fuente de la aplicación.</dd>
-  <dt>doc</dt>
-  <dd>En este directorio está toda la documentación relacionada al proyecto.</dd>
+  <dt>flask_monitoreo</dt>
+  <dd>En este directorio está la aplicación Web que monitorea el acceso desde un torniquete.</dd>
 </dl>
 
 Dependencias
@@ -25,4 +25,5 @@ Dependencias
 [Python Daemon](https://pypi.python.org/pypi/python-daemon/)
 [PyCUPS](https://pypi.python.org/pypi/pycups)
 [MySQL for Python](http://sourceforge.net/projects/mysql-python/)
+[Python Flask](https://pypi.python.org/pypi/Flask)
 

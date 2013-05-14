@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import serial
 import select
 import string
@@ -63,13 +64,16 @@ def accept(comm_dict):
 	sent_str = comm_dict['dir_torniquete'] + "A" + "\r"
 	conn.write(sent_str)
 	res = getFromSerial(conn)
-
 	if res == sent_str:
 		log_this("Comando aceptado: dar acceso a " + comm_dict['codigo'])
 		# esperar la solicitud de paso:
 		res = getParts(getFromSerial(conn))
 		if res['solicitud'] == "S":
-			return True
+			#chequear si paso o no paso
+			if res['ingresos'] > comm_dict['ingresos']:
+				return True
+			else:
+				return False
 		else:
 			return False
 	else:
@@ -112,13 +116,17 @@ if __name__ == "__main__":
 					linea = dbh.fetchone()
 					if linea[0] == "0": # codigo no vendido aun
 						print "Codigo no vendido"
-						reject(m) or log_this("Error de comunicacion")
+						reject(m) 
 					elif linea[1] + timedelta(hours=12) < datetime.today(): # codigo vencido
 						print "Codigo vencido"
-						reject(m) or log_this("Error de comunicacion")
+						reject(m) 
 					else:
 						print "Codigo valido"
-						accept(m) or log_this("Error de comunicacion")
+						if accept(m):
+							dbh2 = db.cursor()
+							dbh2.execute("insert into historial (codigo) values ('%s')" % m['codigo'])
+						else:
+							log_this("El codigo '%s' no ingresó" % m['codigo'])
 				db.commit()
 				dbh.close()
 			else:
