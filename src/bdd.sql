@@ -16,4 +16,4 @@ CREATE TABLE IF NOT EXISTS `constitucion`.`historial` (
 	`fecha` TIMESTAMP
 )
 ENGINE = MyISAM;
-GRANT ALL ON `constitucion`.`codigos` TO 'testuser'@'localhost' IDENTIFIED BY 'handband';
+GRANT ALL ON `constitucion`.* TO 'testuser'@'localhost' IDENTIFIED BY 'handband';

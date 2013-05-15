@@ -8,6 +8,7 @@ import cups
 import os
 import Code128b
 import subprocess
+import glob
 #third party libs
 from daemon import runner
 from PIL import Image, ImageDraw, ImageFont
@@ -38,14 +39,30 @@ class App():
         self.printer = None
         self.font = ImageFont.truetype(WDIR+"BebasNeue.otf", 80)
         self.font_debug = ImageFont.truetype(WDIR+"BebasNeue.otf", 40)
+        self.font_web = ImageFont.truetype(WDIR+"BebasNeue.otf", 30)
         self.segmentos = []
         self.logo = {}
         self.s_printers = {}
+
 
     def generaImagen(self,barcode_img, segmento, fechaventa, debug=False):
         # TODO: Ordenar esta cosa
 
         lienzo = Image.new("1",(1710+780, 300), 1)
+
+        imgweb = Image.new("1",(300,30), 1)
+
+        drawer = ImageDraw.Draw(imgweb)
+
+        margen = int((300 - self.font_web.getsize("www.handband.cl")[0]) / 2)
+
+        drawer.text((margen,0), "www.handband.cl", font=self.font_web)
+
+        imgweb2 = imgweb.rotate(90, expand=True).crop((1,0,31,300))
+        imgweb2.load()
+        imgweb = imgweb2
+
+        lienzo.paste(imgweb, (0,0, 30, 300))
 
         w,h = barcode_img.size
         b = barcode_img.convert("1")
@@ -121,6 +138,11 @@ class App():
 
 
             logger.info("Demonio iniciado. CWD: %s" % (os.getcwd()))
+
+            logger.info("Limpiando carpeta temporal")
+            files = glob.glob(WDIR+"tmp/*")
+            for f in files:
+                os.remove(f)
 
             if len(self.cfg.read(CONFIGFILE)) == 0:
                 raise Exception("Archivo de configuracion no encontrado.")

@@ -3,97 +3,24 @@ import serial
 import select
 import string
 import MySQLdb
+import os
 import ConfigParser
 from datetime import datetime, timedelta
+from utilidades import *
 
-def getFromSerial(cx):
-	message = "";
-	while True:
-		msg = cx.read(1)
-		message += msg
-		if msg == "\r":
-			ans = ''.join(s for s in message if s in string.printable)
-			log_this("respuesta: " + ans)
-			return ans
-		
-
-def getParts(s):
-	d = {}
-	d['dir_torniquete'] = s[0:2]
-	d['solicitud'] = s[2:3]
-	resto = s[3:].split(".")
-	d['codigo'] = resto[0]
-	d['ingresos'] = int(resto[1][1:])
-	d['salidas'] = int(resto[2][1:])
-	d['no_pasos'] = int(resto[3][1:-2])
-
-	return d
-
-"""
-while True:
-	m = getParts(getFromSerial(conn))
-	sent_str = ""
-	while sent_str == "":
-		ans = raw_input("El usuario %s quiere pasar. Aceptar? (s/n):" % m['codigo'])
-		if ans == "s":
-			sent_str = m['dir_torniquete'] + "S" + "\r"
-		elif ans == "n":
-			sent_str = m['dir_torniquete'] + "N" + "\r"
-		else:
-			print "Ingrese una respuesta valida."
-	conn.write(sent_str)
-	res = getFromSerial(conn)
-	
-	if res == sent_str:
-		print "Comando aceptado."
-	else:
-		print "Tiempo de respuesta excedido."
-"""
-
-def reject(comm_dict):
-	sent_str = comm_dict['dir_torniquete'] + "N" + "\r"
-	conn.write(sent_str)
-	res = getFromSerial(conn)
-
-	if res == sent_str:
-		log_this("Comando aceptado: negar acceso a " + comm_dict['codigo'])
-		return True
-	else:
-		return False
-def accept(comm_dict):
-	sent_str = comm_dict['dir_torniquete'] + "A" + "\r"
-	conn.write(sent_str)
-	res = getFromSerial(conn)
-	if res == sent_str:
-		log_this("Comando aceptado: dar acceso a " + comm_dict['codigo'])
-		# esperar la solicitud de paso:
-		res = getParts(getFromSerial(conn))
-		if res['solicitud'] == "S":
-			#chequear si paso o no paso
-			if res['ingresos'] > comm_dict['ingresos']:
-				return True
-			else:
-				return False
-		else:
-			return False
-	else:
-		return False
-
-def log_this(text):
-	print "LOG: " + text
-
-
+WDIR="/usr/share/handbandd/"
 
 if __name__ == "__main__":
+	os.chdir(WDIR)
 	try:
 		log_this("Inciando control de acceso")
-		conn = serial.Serial()
+		cx = serial.Serial()
 
-		conn.baudrate = 38400
-		conn.port = "/dev/ttyUSB0"
+		cx.baudrate = 38400
+		cx.port = "/dev/ttyUSB0"
 		#conn.nonblocking()
 
-		conn.open()
+		cx.open()
 
 		cp = ConfigParser.ConfigParser()
 		cp.read("configuracion.ini")
@@ -104,39 +31,46 @@ if __name__ == "__main__":
 
 		table = cp.get("Database", "Tablename")
 		while True:
-			m = getParts(getFromSerial(conn))
+			m = getParts(getFromSerial(cx))
 			if m['solicitud'] == "0": # entrada
 				codigo_obtenido = m['codigo']
 				dbh = db.cursor()
 				count = dbh.execute("select estado, fecha_venta from %s where codigo = '%s'" % (table, codigo_obtenido))
 				if count == 0:
 					print "Codigo no valido"
-					reject(m) or log_this("Error de comunicacion")
+					reject(cx, m) or log_this("Error de comunicacion")
 				else:
 					linea = dbh.fetchone()
 					if linea[0] == "0": # codigo no vendido aun
 						print "Codigo no vendido"
-						reject(m) 
+						reject(cx, m) 
 					elif linea[1] + timedelta(hours=12) < datetime.today(): # codigo vencido
 						print "Codigo vencido"
-						reject(m) 
+						reject(cx, m) 
 					else:
-						print "Codigo valido"
-						if accept(m):
-							dbh2 = db.cursor()
-							dbh2.execute("insert into historial (codigo) values ('%s')" % m['codigo'])
+						# obtengo el último movimiento del codigo en cuestion
+						l = dbh.execute("select tipo, codigo, fecha from historial where codigo = '%s' order by fecha desc limit 1" % codigo_obtenido)
+						rowb = dbh.fetchone()
+						if l == 0 or rowb[0] == "Salida":
+							print "Codigo valido"
+							if accept(cx, m):
+								dbh2 = db.cursor()
+								dbh2.execute("insert into historial (codigo) values ('%s')" % m['codigo'])
+							else:
+								log_this("El codigo '%s' no ingresó" % m['codigo'])
 						else:
-							log_this("El codigo '%s' no ingresó" % m['codigo'])
+							reject(cx, m)
+							print "El codigo '%s' ya entró y no ha salido" % codigo_obtenido
 				db.commit()
 				dbh.close()
 			else:
-				reject(m) or log_this("Error de comunicacion")
+				reject(cx, m) or log_this("Error de comunicacion")
 		db.close()
 	except serial.SerialException as se:
 		log_this("Problemas al intentar conectarse con la interfaz serial. (%s)" % str(se))
-	except Exception as e:
-		log_this(("Problema: (%s) " % (e.__class__.__name__)) + str(e))
-
+	except Exception as ex:
+		log_this(str(ex))
+		exit(0)
 
 
 
