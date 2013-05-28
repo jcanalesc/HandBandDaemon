@@ -135,8 +135,7 @@ class App():
     def run(self):
         try:
             os.chdir(WDIR)
-
-
+            time.sleep(1)
             logger.info("Demonio iniciado. CWD: %s" % (os.getcwd()))
 
             logger.info("Limpiando carpeta temporal")
@@ -287,8 +286,6 @@ if __name__ == "__main__":
     handler = logging.FileHandler("/var/log/handbandd/handbandd.log")
     handler.setFormatter(formatter)
     logger.addHandler(handler)
-
-    daemon_runner = runner.DaemonRunner(app)
-    #This ensures that the logger file handle does not get closed during daemonization
-    daemon_runner.daemon_context.files_preserve=[handler.stream]
-    daemon_runner.do_action()
+    app.run()
+    exit(1)
+    

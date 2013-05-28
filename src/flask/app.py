@@ -1,6 +1,9 @@
+import sys
 from flask import Flask, render_template, jsonify
 import bdd
-
+import subprocess
+import os
+import random
 app = Flask(__name__)
 
 @app.route("/")
@@ -27,6 +30,15 @@ def vaciareg():
 		return jsonify({"res": True})
 	except Exception as e:
 		return jsonify({"res": False, "error": str(e)})		
+
+@app.route("/agrega")
+def agregaPersona():
+	try:
+		bdd.agregar()
+		return jsonify({"res": True})
+	except Exception as e:
+		return jsonify({"res": False, "error": str(e)})
+
 
 if __name__ == "__main__":
     app.run(debug=True)

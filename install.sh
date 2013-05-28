@@ -12,9 +12,9 @@ touch /var/log/handbandd/handbandd.log &&
 
 
 echo -n "MySQL database user:" &&
-read $user &&
+read user &&
 echo -n "MySQL database password for user $user:" &&
-read -s $pass &&
+read pass &&
 echo "Creando base de datos" &&
 mysql -u $user --password=$pass < src/bdd.sql &&
 
@@ -25,9 +25,7 @@ a2ensite monitoreo &&
 service apache2 reload &&
 
 echo "Instalando servicio" &&
-cp src/handbandd /etc/init.d/ &&
-chmod +x /etc/init.d/handbandd &&
-update-rc.d handbandd defaults &&
+cp handbandd.conf /etc/init/ &&
 service handbandd start
 
 

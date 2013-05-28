@@ -75,6 +75,9 @@
        <div class="span4">
           <button class="btn btn-large btn-primary" id="btn-vaciar">Vaciar registros</button>
         </div>
+        <div class="span4">
+          <button class="btn btn-large btn-primary" id="btn-agregar">Entrada</button>
+        </div>
         
       </div>
 
@@ -192,6 +195,18 @@
 
     }
 
+    function agregarPersona()
+    {
+      $.ajax({
+        url: "/agrega",
+        dataType: "json",
+        success: function(obj)
+        {
+          if (obj.res != true)
+            alert("Error: " + obj.error)
+        }
+      });
+    }
     $(function()
     {
     	for(var i = 0; i < ndatos; i++)
@@ -203,6 +218,7 @@
     	// $("#btn-entrada").click(add);
     	$("#btn-salida").click(remove);
       $("#btn-vaciar").click(vaciarRegistros);
+      $("#btn-agregar").click(agregarPersona);
     });
     </script>
   </body>
