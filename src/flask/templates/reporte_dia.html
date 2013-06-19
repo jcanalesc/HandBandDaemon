@@ -1,0 +1,62 @@
+{% extends "main.html" %}
+{% block estilo %}
+<style type="text/css">
+#grafico
+{
+	height: 300px;
+	width: 600px;
+}
+</style>
+{% endblock estilo%}
+{% block contenido %}
+<h2>Detalles del {{ unidad_tiempo }}: {{ periodo }}</h2>
+<div class="row">
+	
+	<div class="span10 hero-unit">
+		<h4>Flujo de clientes del día:</h4>
+		<div class="row">
+			<div class="span7">
+			<div id="grafico" ></div>
+		</div>
+			<div class="span3">
+				<table class="table table-bordered table-condensed">
+					<tbody>
+						<tr><td>Entradas generales vendidas:</td><td><span class="badge badge-info">{{datos.entradas_vendidas[0]}}</span></td></tr>
+						<tr><td>Entradas cortesía vendidas:</td><td><span class="badge badge-success">{{datos.entradas_vendidas[1]}}</span></td></tr>
+						<tr><td>Entradas totales vendidas:</td><td><span class="badge badge-warning">{{datos.entradas_vendidas[0]+datos.entradas_vendidas[1]}}</span></td></tr>
+						<tr><td colspan="2">Máximo de personas en el local:</td></tr>
+						<tr><td colspan="2"><span class="badge badge-important">{{datos.peak[0]}}</span> personas, entre las {{ datos.peak[1].strftime("%H:%M") }} y las {{datos.peak[2].strftime("%H:%M")}}</td></tr>
+
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+</div>
+<div class="row">
+	<div class="span5 offset1">
+		<table class="table table-bordered table-condensed">
+			<tbody>
+				<tr>
+					<td>Entradas totales:</td>
+					<td>{{ datos.entradas_vendidas[0] }}</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</div>
+{% endblock contenido %}
+{% block scripts %}
+<script type="text/javascript">
+var datos = {{ datos.flujos|safe }};
+var deriv = [[0,0]];
+for (var i = 0; i < datos.length-1; i++)
+{
+	deriv[i+1] = [i+1, datos[i+1][1] - datos[i][1]];
+}
+$(function()
+{
+	$.plot("#grafico", [datos], { xaxis: { mode: "time"}});
+});
+</script>
+{% endblock scripts%}

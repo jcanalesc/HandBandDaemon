@@ -51,7 +51,10 @@ def accept(conn, comm_dict):
 		res = getParts(getFromSerial(conn))
 		if res['solicitud'] == "S":
 			#chequear si paso o no paso
-			return True
+			if res['ingresos'] > comm_dict['ingresos']:
+				return True
+			else:
+				return False
 		else:
 			return False
 	else:

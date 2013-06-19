@@ -1,0 +1,34 @@
+{% extends "main.html" %}
+{% block estilo %}
+<style type="text/css">
+.rowed
+{
+	display: block;
+	margin: 5px;
+}
+</style>
+{% endblock estilo %}
+{% block contenido %}
+	<div class="row">
+		<div class="span4">
+			<caption>Reportes diarios</caption>
+			{% for i in rdia: %}
+			<a class="rowed btn btn-large" href="/reporte/{{i.year}}/{{i.month}}/{{i.day}}">{{i.strftime("%A, %d de %B del %Y")}}</a>
+			{% endfor %}
+		</div>
+		<div class="span4">
+			<caption>Reportes mensuales</caption>
+			{% for i in rmes: %}
+			<a class="rowed btn btn-large" href="/reporte/{{i.year}}/{{i.month}}">{{i.strftime("%B del %Y")}}</a>
+			{% endfor %}
+		</div>
+		<div class="span4">
+			<caption>Reportes anuales</caption>
+			{% for i in rano: %}
+			<a class="rowed btn btn-large" href="/reporte/{{i.year}}">{{i.strftime("%Y")}}</a>
+			{% endfor %}
+		</div>
+	</div>
+{% endblock contenido %}
+{% block scripts %}
+{% endblock %}

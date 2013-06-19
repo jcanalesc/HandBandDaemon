@@ -19,8 +19,6 @@
       	height: 14em;
       }
     </style>
-    {% block estilo %}
-    {% endblock estilo %}
     <link href="/static/bootstrap/css/bootstrap-responsive.css" rel="stylesheet">
 
     <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
@@ -42,8 +40,7 @@
           <a class="brand" href="#">Monitoreo</a>
           <div class="nav-collapse collapse">
             <ul class="nav">
-              <li><a href="/">Home</a></li>
-              <li><a href="/reportes">Reportes</a></li>
+              <li class="active"><a href="#">Home</a></li>
             </ul>
             <img src="/static/logo.jpg" class="pull-right" style="height: 40px;">
           </div><!--/.nav-collapse -->
@@ -52,19 +49,15 @@
     </div>
 
     <div class="container">
-      {% block contenido %}
 
       <!-- Main hero unit for a primary marketing message or call to action -->
       <div class="row">
       	<div class="well span4 offset4">
       		<h2>Personas en el local: <span id="label-genteActual">0</span></h2>
-          <p>Generales en local: <span id="label-genteGeneral">0</span></p>
-          <p>Cortesías en local: <span id="label-genteCortesia">0</span></p>
-
       	</div>
       </div>
       <div class="hero-unit">
-      	<div><h4>Historia de los últimos 60 minutos</h4></div>
+      	<div><h4>Historia de los últimos 60 segundos</h4></div>
       	<div class="graph-placeholder">
       	</div>
 
@@ -118,7 +111,7 @@
       <footer>
         <p>&copy; Hand Band Chile 2013</p>
       </footer>
-      {% endblock contenido %}
+
     </div> <!-- /container -->
 
     <!-- Le javascript
@@ -127,50 +120,42 @@
     <script src="/static/jquery-1.9.1.min.js"></script>
     <script src="/static/bootstrap/js/bootstrap.min.js"></script>
     <script src="/static/flot/jquery.flot.min.js"></script>
-    <script src="/static/flot/jquery.flot.time.min.js"></script>
-
-    {% block scripts %}
     <script>
 
     var genteActual = 0;
-    var genteCortesia = 0;
-    var genteGeneral = 0;
     var maxGenteActual = 0;
-    var ndatos = 3600;
+    var ndatos = 300;
     var datos = [];
     var hGrafico = null;
 
     function check_bdd()
     {
+    	var response = null;
     	$.ajax({
     		url: "/genteActual",
 			dataType: "json",
 			success: function(obj)
 			{
-				updateGrafico(obj.res);
-			}
+				response = obj.res;
+			},
+    		async: false
     	});
+    	return response;
     }
 
-    function updateGrafico(bdd_data)
+    function updateGrafico()
     {
     	datos = datos.slice(1);
 
-    	var gentebdd = bdd_data;
+    	var gentebdd = check_bdd();
     	if (gentebdd != null)
-      {
-    		genteActual = gentebdd[0];
-        genteCortesia = gentebdd[1];
-        genteGeneral  =gentebdd[2];
-      }
+    		genteActual = gentebdd;
 
     	if (genteActual >= maxGenteActual)
     		maxGenteActual = genteActual;
     	datos.push(genteActual);
 
     	$("#label-genteActual").html(genteActual);
-      $("#label-genteCortesia").html(genteCortesia);
-      $("#label-genteGeneral").html(genteGeneral);
     	
     	hGrafico = $.plot(".graph-placeholder", [obtPares()], {
     		yaxis:
@@ -182,7 +167,7 @@
     		{
     			tickFormatter: function(val, obj)
     			{
-    				var segundo = parseInt(val/60);
+    				var segundo = parseInt(val/5);
     				if (val % 5 == 0)
     					return segundo;
     				else
@@ -279,7 +264,6 @@
     {
       $.ajax({
         url: "/agrega",
-        type: "get",
         data: { cortesia: true },
         dataType: "json",
         success: function(obj)
@@ -296,7 +280,7 @@
     		datos.push(null);
 
     	hGrafico = $.plot(".graph-placeholder", [obtPares()]);
-    	setInterval("check_bdd()", 1000);
+    	setInterval("updateGrafico()", 200);
 
     	// $("#btn-entrada").click(add);
     	$("#btn-salida").click(remove);
@@ -305,6 +289,5 @@
       $("#btn-cortesia").click(agregarPersonaCortesia);
     });
     </script>
-    {% endblock scripts %}
   </body>
 </html>

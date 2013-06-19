@@ -120,7 +120,6 @@ class App():
 
         while (tries > 0 or tries == -1):
             try:
-                logger.info("Conectando a la base de datos...")
                 self.dbh = MySQLdb.connect(host=host, user=user, passwd=pswd, db=dbn)
                 return True
             except MySQLdb.InterfaceError as ie:
@@ -158,13 +157,6 @@ class App():
 
             self.logo_img = self.logo_img.resize((self.logo['w'], self.logo['h']))
            
-            conectado = self.connect_to_database()
-
-            if conectado:
-                logger.info("Conectado a la base de datos")
-            else:
-                raise Exception("No se logro realizar una conexion con la base de datos")
-
             printers = self.cups_conn.getPrinters()
 
             logger.info("Buscando impresoras")
@@ -202,8 +194,13 @@ class App():
             bheight = int(self.cfg.get("Barcode", "Height"))
 
             table = self.cfg.get("Database", "Tablename")
-            crs = self.dbh.cursor()
+            
             while True:
+                conectado = self.connect_to_database()
+                if not conectado:
+                    raise Exception("No se logro realizar una conexion con la base de datos")
+                crs = self.dbh.cursor()
+
                 # TODO:
                 # 1. Conectarse a la base de datos, con datos de un archivo de configuracion
                 # 2. Verificar la conexión a la impresora
@@ -265,6 +262,8 @@ class App():
                         logger.info("Pulsera %s (ID: %d) (Segmento: %s) impresa. Base de datos actualizada." % (str(codigo_pulsera), id_pulsera, self.segmentos[segmento]))
 
                 self.dbh.commit()
+                crs.close()
+                self.dbh.close()
                 time.sleep(1) # un segundo
 
         except ConfigParser.ParsingError as pe:
