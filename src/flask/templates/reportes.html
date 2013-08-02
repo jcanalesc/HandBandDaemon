@@ -11,19 +11,46 @@
 {% block contenido %}
 	<div class="row">
 		<div class="span4">
-			<caption>Reportes diarios</caption>
+			<legend>Reportes diarios</legend>
+			<select class="input-small" name="dia" id="d1"></select>
+			de
+			<select class="input-small" name="mes" id="m1">
+				{% for m in range(1,13): %}
+				<option value="{{m}}">{{ m|nombremes }}</option>
+				{% endfor %}
+			</select>
+			del
+			<input type="text" class="input-small" name="ano" value="2013" id="y1"/>
+			<br />
+			<button class="btn btn-small btn-info" id="b1">Ver reporte</button>
+			<legend>Últimos 10 días</legend>
 			{% for i in rdia: %}
 			<a class="rowed btn btn-large" href="/reporte/{{i.year}}/{{i.month}}/{{i.day}}">{{i.strftime("%A, %d de %B del %Y")}}</a>
 			{% endfor %}
 		</div>
 		<div class="span4">
-			<caption>Reportes mensuales</caption>
+			<legend>Reportes mensuales</legend>
+			<select class="input-small" name="mes" id="m2">
+				{% for m in range(1,13): %}
+				<option value="{{m}}">{{ m|nombremes }}</option>
+				{% endfor %}
+			</select>
+			del
+			<input type="text" class="input-small" name="ano" value="2013" id="y2"/>
+			<br />
+			<button class="btn btn-small btn-info" id="b2">Ver reporte</button>
+			<legend>Últimos 10 meses</legend>
 			{% for i in rmes: %}
 			<a class="rowed btn btn-large" href="/reporte/{{i.year}}/{{i.month}}">{{i.strftime("%B del %Y")}}</a>
 			{% endfor %}
 		</div>
 		<div class="span4">
-			<caption>Reportes anuales</caption>
+			<legend>Reportes anuales</legend>
+			Año: 
+			<input type="text" class="input-small" name="ano" value="2013" id="y3"/>
+			<br />
+			<button class="btn btn-small btn-info" id="b3">Ver reporte</button>
+			<legend>Últimos 10 años</legend>
 			{% for i in rano: %}
 			<a class="rowed btn btn-large" href="/reporte/{{i.year}}">{{i.strftime("%Y")}}</a>
 			{% endfor %}
@@ -31,4 +58,82 @@
 	</div>
 {% endblock contenido %}
 {% block scripts %}
+<script type="text/javascript">
+function poblar_select(selector, mes, ano)
+{
+	$(selector).html("");
+	dias = 0;
+	switch(mes)
+	{
+		case 2:
+			if (ano % 4 == 0 && (ano % 100 != 0 || ano % 400 == 0))
+				dias = 29;
+			else
+				dias = 28;
+			break;
+		case 1:
+		case 3:
+		case 5:
+		case 7:
+		case 8:
+		case 10:
+		case 12:
+			dias = 31;
+			break;
+		default:
+			dias = 30;
+	}
+	for (var i = 1; i <= dias; i++)
+	{
+		$(selector).append("<option value=\""+i+"\">"+i+"</option>");
+	}
+}
+$(function()
+{
+	$("#m1, #y1").change(function()
+	{
+		if ($("#y1").val().length > 0 && parseInt($("#y1").val()) > 0)
+		{
+			var ano = parseInt($("#y1").val());
+			var mes = parseInt($("#m1").val());
+			poblar_select("#d1", mes, ano);
+		}
+	});
+
+	$("#b1").click(function()
+	{
+		var dia = $("#d1").val();
+		var mes = $("#m1").val();
+		var ano = $("#y1").val();
+		if (ano.length == 0)
+		{
+			alert("Especifique un año.");
+			return;
+		}
+		location.href="/reporte/"+ano+"/"+mes+"/"+dia;
+	});
+	$("#b2").click(function()
+	{
+		var mes = $("#m2").val();
+		var ano = $("#y2").val();
+		if (ano.length == 0)
+		{
+			alert("Especifique un año.");
+			return;
+		}
+		location.href="/reporte/"+ano+"/"+mes;
+	});
+	$("#b3").click(function()
+	{
+		var ano = $("#y3").val();
+		if (ano.length == 0)
+		{
+			alert("Especifique un año.");
+			return;
+		}
+		location.href="/reporte/"+ano;
+	});
+	$("#m1").change();
+});
+</script>
 {% endblock %}

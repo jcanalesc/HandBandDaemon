@@ -13,7 +13,7 @@
 <div class="row">
 	
 	<div class="span10 hero-unit">
-		<h4>Ventas del mes:</h4>
+		<h4>Ventas del año:</h4>
 		<div class="row">
 			<div class="span7">
 			<div id="grafico" ></div>
@@ -24,7 +24,7 @@
 						<tr><td>Entradas generales vendidas:</td><td><span class="badge badge-info">{{datos.entradas_vendidas[0]}}</span></td></tr>
 						<tr><td>Entradas cortesía vendidas:</td><td><span class="badge badge-success">{{datos.entradas_vendidas[1]}}</span></td></tr>
 						<tr><td>Entradas totales vendidas:</td><td><span class="badge badge-warning">{{datos.entradas_vendidas[0]+datos.entradas_vendidas[1]}}</span></td></tr>
-						<tr><td colspan="2">Mejor día: <span class="badge badge-important">{{datos.mejordia.dia}}</span>, con <code>{{datos.mejordia.entradas}}</code> entradas vendidas.</td></tr>
+						<tr><td colspan="2">Mejor mes: <span class="badge badge-important">{{datos.mejormes.mes}}</span>, con <code>{{datos.mejormes.entradas}}</code> entradas vendidas.</td></tr>
 
 					</tbody>
 				</table>
@@ -38,7 +38,7 @@
 var datos = {{ datos.flujos|safe }};
 $(function()
 {
-	$.plot("#grafico", [datos], { xaxis: { mode: "time", timeformat: "%d/%m", minTickSize: [1, "day"]}});
+	$.plot("#grafico", [datos], { xaxis: { mode: "time", timeformat: "%b", minTickSize: [1, "day"], monthNames: ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]}});
 });
 </script>
 {% endblock scripts%}

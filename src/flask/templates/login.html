@@ -1,0 +1,21 @@
+{% extends "main.html" %}
+{% block estilo %}
+{% endblock estilo %}
+{% block contenido %}
+	<div class="row">
+		<div class="span6">
+			<legend>Autorización requerida</legend>
+			<form class="form-vertical" action="/login" method="post">
+				<div class="control-group">
+					<label>Ingrese contraseña:</label><input type="password" name="passwd"/>
+					{% if msg: %}
+					<div class="alert alert-error">
+						<b>Error:</b> {{ msg }}
+					</div>
+					{% endif %}
+				</div>
+				<input type="submit" value="Ingresar" class="btn btn-primary">
+			</form>
+		</div>
+	</div>
+{% endblock %}

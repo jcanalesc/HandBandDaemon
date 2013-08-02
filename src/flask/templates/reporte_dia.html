@@ -1,62 +1,68 @@
 {% extends "main.html" %}
 {% block estilo %}
 <style type="text/css">
-#grafico
+#grafico_flujo, #grafico_entra, #grafico_salid
 {
 	height: 300px;
 	width: 600px;
+}
+#flujo, #entra, #salid
+{
+	height: 350px;
 }
 </style>
 {% endblock estilo%}
 {% block contenido %}
 <h2>Detalles del {{ unidad_tiempo }}: {{ periodo }}</h2>
 <div class="row">
-	
 	<div class="span10 hero-unit">
 		<h4>Flujo de clientes del día:</h4>
 		<div class="row">
 			<div class="span7">
-			<div id="grafico" ></div>
-		</div>
+				<ul class="nav nav-tabs" id="tabber">
+					<li class="active"><a href="#flujo" data-toggle="tab">Flujo del recinto</a></li>
+					<li><a href="#entra" data-toggle="tab">Entradas</a></li>
+					<li><a href="#salid" data-toggle="tab">Salidas</a></li>
+				</ul>
+				<div class="tab-content">
+					<div class="tab-pane active" id="flujo">
+						<div id="grafico_flujo"></div>
+					</div>
+					<div class="tab-pane active" id="entra">
+						<div id="grafico_entra"></div>
+					</div>
+					<div class="tab-pane active" id="salid">
+						<div id="grafico_salid"></div>
+					</div>
+				</div>
+			</div>
 			<div class="span3">
 				<table class="table table-bordered table-condensed">
 					<tbody>
 						<tr><td>Entradas generales vendidas:</td><td><span class="badge badge-info">{{datos.entradas_vendidas[0]}}</span></td></tr>
 						<tr><td>Entradas cortesía vendidas:</td><td><span class="badge badge-success">{{datos.entradas_vendidas[1]}}</span></td></tr>
 						<tr><td>Entradas totales vendidas:</td><td><span class="badge badge-warning">{{datos.entradas_vendidas[0]+datos.entradas_vendidas[1]}}</span></td></tr>
-						<tr><td colspan="2">Máximo de personas en el local:</td></tr>
-						<tr><td colspan="2"><span class="badge badge-important">{{datos.peak[0]}}</span> personas, entre las {{ datos.peak[1].strftime("%H:%M") }} y las {{datos.peak[2].strftime("%H:%M")}}</td></tr>
-
+						<tr><td colspan="2">Máximo de personas en el recinto: <span class="badge badge-important">{{datos.peak[0]}}</span> personas, entre las {{ datos.peak[1].strftime("%H:%M") }} y las {{datos.peak[2].strftime("%H:%M")}}</td></tr>
+						<tr><td colspan="2">Minutos, en promedio, que una persona permaneció en el recinto ese día: <span class="badge badge-info">{{datos.tiempo_promedio}}</span></td></tr>
 					</tbody>
 				</table>
 			</div>
 		</div>
 	</div>
 </div>
-<div class="row">
-	<div class="span5 offset1">
-		<table class="table table-bordered table-condensed">
-			<tbody>
-				<tr>
-					<td>Entradas totales:</td>
-					<td>{{ datos.entradas_vendidas[0] }}</td>
-				</tr>
-			</tbody>
-		</table>
-	</div>
-</div>
 {% endblock contenido %}
 {% block scripts %}
 <script type="text/javascript">
 var datos = {{ datos.flujos|safe }};
-var deriv = [[0,0]];
-for (var i = 0; i < datos.length-1; i++)
-{
-	deriv[i+1] = [i+1, datos[i+1][1] - datos[i][1]];
-}
+var datos2 = {{ datos.entradas|safe }};
+var datos3 = {{ datos.salidas|safe }};
+
 $(function()
 {
-	$.plot("#grafico", [datos], { xaxis: { mode: "time"}});
+	$.plot("#grafico_flujo", [datos], { xaxis: { mode: "time", timeformat: "%H:%M" }});
+	$.plot("#grafico_entra", [datos2], { xaxis: { mode: "time" }});
+	$.plot("#grafico_salid", [datos3], { xaxis: {mode: "time"}});
+	$("#entra, #salid").removeClass("active");
 });
 </script>
 {% endblock scripts%}

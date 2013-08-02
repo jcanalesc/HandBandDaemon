@@ -10,7 +10,8 @@
     <!-- Le styles -->
     <link href="/static/bootstrap/css/bootstrap.css" rel="stylesheet">
     <style type="text/css">
-      body {
+      body 
+      {
         padding-top: 60px;
         padding-bottom: 40px;
       }
@@ -57,9 +58,9 @@
       <!-- Main hero unit for a primary marketing message or call to action -->
       <div class="row">
       	<div class="well span4 offset4">
-      		<h2>Personas en el local: <span id="label-genteActual">0</span></h2>
-          <p>Generales en local: <span id="label-genteGeneral">0</span></p>
-          <p>Cortesías en local: <span id="label-genteCortesia">0</span></p>
+      		<h2>Personas en el recinto: <span id="label-genteActual">0</span></h2>
+          <p>Generales en recinto: <span id="label-genteGeneral">0</span></p>
+          <p>Cortesías en recinto: <span id="label-genteCortesia">0</span></p>
 
       	</div>
       </div>
@@ -80,8 +81,9 @@
           <button class="btn btn-large btn-warning" id="btn-cortesia">Entrada de cortesía</button>
        </div>
        <div class="span4">
-          <button class="btn btn-large btn-danger" id="btn-vaciar">Vaciar local</button>
+          <button class="btn btn-large btn-danger" id="btn-vaciar">Vaciar recinto</button>
         </div>
+        {#
         <div class="span4">
           
           <div>
@@ -110,6 +112,7 @@
             </table>
           </div>
         </div>
+        #}
         
       </div>
 
@@ -130,7 +133,7 @@
     <script src="/static/flot/jquery.flot.time.min.js"></script>
 
     {% block scripts %}
-    <script>
+    <script type="text/javascript">
 
     var genteActual = 0;
     var genteCortesia = 0;
@@ -140,18 +143,7 @@
     var datos = [];
     var hGrafico = null;
 
-    function check_bdd()
-    {
-    	$.ajax({
-    		url: "/genteActual",
-			dataType: "json",
-			success: function(obj)
-			{
-				updateGrafico(obj.res);
-			}
-    	});
-    }
-
+    
     function updateGrafico(bdd_data)
     {
     	datos = datos.slice(1);
@@ -159,9 +151,9 @@
     	var gentebdd = bdd_data;
     	if (gentebdd != null)
       {
-    		genteActual = gentebdd[0];
+    		genteActual   = gentebdd[0];
         genteCortesia = gentebdd[1];
-        genteGeneral  =gentebdd[2];
+        genteGeneral  = gentebdd[2];
       }
 
     	if (genteActual >= maxGenteActual)
@@ -190,6 +182,17 @@
     			}
     		}
     	});
+    }
+    function checkbdd()
+    {
+      $.ajax({
+        url: "/genteActual",
+        success: function(obj)
+        {
+          updateGrafico(obj.res);
+        },
+        dataType: "json"
+      });
     }
 
     function add()
@@ -296,7 +299,7 @@
     		datos.push(null);
 
     	hGrafico = $.plot(".graph-placeholder", [obtPares()]);
-    	setInterval("check_bdd()", 1000);
+    	setInterval("checkbdd()", 1000);
 
     	// $("#btn-entrada").click(add);
     	$("#btn-salida").click(remove);
