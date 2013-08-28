@@ -20,13 +20,13 @@ def obtGenteActual():
 	cur = connection.cursor()
 	resc = 0
 	resg = 0
-	cur.execute("select tipo, count(*) as conteo from (select tipo from historial left join codigos on (historial.codigo = codigos.codigo) where codigos.segmento = 1) as f group by tipo")
+	cur.execute("select tipo, count(*) as conteo from (select tipo, fecha from historial left join codigos on (historial.codigo = codigos.codigo) where codigos.segmento = 1) as f where DATE(TIMESTAMPADD(HOUR,-6,f.fecha)) = DATE(TIMESTAMPADD(HOUR,-6,NOW())) group by tipo")
 	for row in cur.fetchall():
 		if row[0] == "Entrada":
 			resc += row[1]
 		else:
 			resc -= row[1]
-	cur.execute("select tipo, count(*) as conteo from (select tipo from historial left join codigos on (historial.codigo = codigos.codigo) where codigos.segmento = 0) as f group by tipo")
+	cur.execute("select tipo, count(*) as conteo from (select tipo, fecha from historial left join codigos on (historial.codigo = codigos.codigo) where codigos.segmento = 0) as f  where DATE(TIMESTAMPADD(HOUR,-6,f.fecha)) = DATE(TIMESTAMPADD(HOUR,-6,NOW())) group by tipo")
 	for row in cur.fetchall():
 		if row[0] == "Entrada":
 			resg += row[1]
@@ -51,7 +51,7 @@ def emula_salida():
 def vaciar():
 	connection = MySQLdb.connect(**connect_dict)
 	cur = connection.cursor()
-	cur.execute("select codigo, tipo from (select * from historial order by fecha desc) as f group by codigo")
+	cur.execute("select codigo, tipo from (select * from historial where DATE(TIMESTAMPADD(HOUR,-6,fecha)) = DATE(TIMESTAMPADD(HOUR,-6,NOW())) order by fecha desc) as f group by codigo")
 	codigos = cur.fetchall()
 	for row in codigos:
 		if row[1] == "Entrada":

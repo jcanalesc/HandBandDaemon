@@ -23,12 +23,9 @@ if __name__ == "__main__":
 		
 
 		while True:
-			db = MySQLdb.connect(host=cp.get("Database", "Host"),
-				user=cp.get("Database", "Username"),
-				passwd=cp.get("Database", "Password"),db=cp.get("Database", "Dbname"))
+			
 			m = getParts(getFromSerial(cx))
 			codigo_obt = m['codigo']
-			dbh = db.cursor()
 			# criterio para la salida?
 			# defecto: siempre aceptar
 			if len(m['codigo']) < 4:
@@ -36,14 +33,16 @@ if __name__ == "__main__":
 				reject(cx, m)
 			elif accept(cx, m):
 				if not codigo_maestro(codigo_obt):
+					db = MySQLdb.connect(host=cp.get("Database", "Host"),user=cp.get("Database", "Username"),passwd=cp.get("Database", "Password"),db=cp.get("Database", "Dbname"))
+					dbh = db.cursor()
 					lines = dbh.execute("select tipo from historial where codigo = '%s' order by fecha desc limit 1" % codigo_obt)
 					if lines > 0 and dbh.fetchone()[0] == "Entrada":
 						dbh.execute("insert into historial (tipo, codigo) values ('Salida', '%s')" % codigo_obt)
+					db.commit()
+					dbh.close()
+					db.close()
 				else:
 					log_this("Codigo maestro ingresado")
-			db.commit()
-			dbh.close()
-			db.close()
 	except serial.SerialException as se:
 		log_this("Problemas al intentar conectarse con la interfaz serial. (%s)" % str(se))
 	except Exception as e:
