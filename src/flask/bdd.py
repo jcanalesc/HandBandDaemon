@@ -3,7 +3,9 @@ import random
 import datetime
 import time
 import ConfigParser
+import os
 
+os.chdir("/usr/share/handbandd/flask")
 cp = ConfigParser.ConfigParser()
 cp.read("../configuracion.ini")
 connect_dict = {

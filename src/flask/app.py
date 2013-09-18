@@ -1,18 +1,57 @@
 # -*- coding: utf-8 -*-
 import sys
-from flask import Flask, render_template, jsonify, request, session, redirect, url_for
+from flask import Flask, render_template, jsonify, request, session, redirect, url_for, make_response, current_app
 import bdd
 import subprocess
 import os
 import random
 import datetime
 import locale
+from functools import wraps, update_wrapper
+from datetime import timedelta
+
 reload(sys)
 sys.setdefaultencoding("utf-8")
 locale.setlocale(locale.LC_ALL, 'es_CL.UTF-8')
 app = Flask(__name__)
 
 CLAVE_ADMIN = "constitucion2013"
+
+def crossdomain(origin=None, methods=None, headers=None,
+	max_age=21600, attach_to_all=True,
+	automatic_options=True):
+	if methods is not None:
+		methods = ', '.join(sorted(x.upper() for x in methods))
+	if headers is not None and not isinstance(headers, basestring):
+		headers = ', '.join(x.upper() for x in headers)
+	if not isinstance(origin, basestring):
+		origin = ', '.join(origin)
+	if isinstance(max_age, timedelta):
+		max_age = max_age.total_seconds()
+	def get_methods():
+		if methods is not None:
+			return methods
+		options_resp = current_app.make_default_options_response()
+		return options_resp.headers['allow']
+	def decorator(f):
+		def wrapped_function(*args, **kwargs):
+			if automatic_options and request.method == 'OPTIONS':
+				resp = current_app.make_default_options_response()
+			else:
+				resp = make_response(f(*args, **kwargs))
+			if not attach_to_all and request.method != 'OPTIONS':
+				return resp
+			h = resp.headers
+			h['Access-Control-Allow-Origin'] = origin
+			h['Access-Control-Allow-Methods'] = get_methods()
+			h['Access-Control-Max-Age'] = str(max_age)
+			if headers is not None:
+				h['Access-Control-Allow-Headers'] = headers
+			return resp
+		f.provide_automatic_options = False
+		return update_wrapper(wrapped_function, f)
+	return decorator
+
 
 def nombremes(value):
 	return ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][value-1]
@@ -29,6 +68,7 @@ def main():
 	return render_template("main.html", cantidades=cnt, totales=tot)
 
 @app.route("/genteActual")
+@crossdomain(origin='*')
 def get_gente_actual():
 	ga = bdd.obtGenteActual()
 	return jsonify({"res":ga})
@@ -103,5 +143,60 @@ def logear():
 	else:
 		return render_template("login.html", msg="Clave incorrecta.")
 
+
+@app.route("/appdata")
+@crossdomain(origin='*')
+def obt_datos_app():
+	objeto = {}
+	tiporeporte = request.args.get("tiporeporte", None)
+	fechareporte = [int(x) for x in request.args.get("reporte", None).split("/")]
+	objeto["reportes"] = {}
+	objeto["reportes"]["dia"] = []
+	objeto["reportes"]["mes"] = []
+	objeto["reportes"]["ano"] = []
+	r_dia = bdd.get_reportes_dia()
+	r_mes = bdd.get_reportes_mes()
+	r_ano = bdd.get_reportes_ano()
+	for elem in r_dia:
+		objeto["reportes"]["dia"].append([elem.day, elem.month, elem.year])
+	for elem in r_mes:
+		objeto["reportes"]["mes"].append([elem.month, elem.year])
+	for elem in r_ano:
+		objeto["reportes"]["ano"].append(elem.year)
+	objeto["reporte"] = {
+		"datos_grafico": [],
+		"stats": []
+	}
+	report_data = None
+	if tiporeporte == "dia":
+		report_data = bdd.reportes_dia(fechareporte[2], fechareporte[1], fechareporte[0])
+		objeto["reporte"]["datos_grafico"] = report_data["flujos"]
+		objeto["reporte"]["stats"] = [
+		{"label": "Total", "value" : str(sum(report_data["entradas_vendidas"]))},
+		{"label": "Peak" , "value" : str(report_data["peak"][0])},
+		{"label": "Tiempo pr.", "value": "{0:.1f}".format(report_data["tiempo_promedio"])+"min"}
+		]
+	elif tiporeporte == "mes":
+		report_data = bdd.reportes_mes(fechareporte[1], fechareporte[0])
+		objeto["reporte"] = {
+			"datos_grafico" : report_data["flujos"],
+			"stats": [
+				{"label": "Total", "value": sum(report_data["entradas_vendidas"])},
+				{"label": u"Mejor día", "value": report_data["mejordia"]["dia"]},
+				{"label": u"Cant. mejor día", "value": report_data["mejordia"]["entradas"]}
+			]
+		}
+	elif tiporeporte == "ano":
+		report_data = bdd.reportes_ano(fechareporte)
+		objeto["reporte"] = {
+			"datos_grafico": report_data["flujos"],
+			"stats": [
+				{"label": "Total", "value": sum(report_data["entradas_vendidas"])},
+				{"label": "Mejor mes", "value": report_data["mejormes"]["mes"]},
+				{"label": "Cant. mejor mes", "value": report_data["mejormes"]["entradas"]}
+			]
+		}
+	return jsonify(objeto)
+
 if __name__ == "__main__":
-    app.run("0.0.0.0",debug=True)
+	app.run("0.0.0.0",debug=True)
