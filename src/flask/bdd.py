@@ -5,8 +5,8 @@ import time
 import ConfigParser
 import os
 
-os.chdir("/usr/share/handbandd/flask")
 cp = ConfigParser.ConfigParser()
+print os.getcwd()
 cp.read("../configuracion.ini")
 connect_dict = {
 	"host": cp.get("Database", "Host"),
@@ -111,7 +111,13 @@ def get_reportes_dia():
 	#ultimos 10 dias
 	connection = MySQLdb.connect(**connect_dict)
 	cur = connection.cursor()
-	start_date = datetime.datetime.today() - datetime.timedelta(days=10)
+	#start_date = datetime.datetime.today() - datetime.timedelta(days=10)
+	cur.execute("select MAX(DATE(TIMESTAMPADD(HOUR,-6,fecha_venta))) from codigos")
+	tmp = cur.fetchone()[0]
+	print tmp
+	start_date = datetime.datetime.strptime(tmp, "%Y-%m-%d")
+	start_date = start_date - datetime.timedelta(days=10)
+
 	start_date_string = start_date.strftime("%Y-%m-%d %H:%M:%S")
 	cur.execute("select DATE(TIMESTAMPADD(HOUR,-6,fecha_venta)) as df from codigos where DATE(TIMESTAMPADD(HOUR,-6,fecha_venta)) >= DATE(TIMESTAMPADD(HOUR,-6, '%s')) group by df order by df desc limit 10" % start_date_string)
 	res = []
@@ -272,9 +278,10 @@ def reportes_mes(ano, mes):
 			mejor_dia = k
 
 
-	return {"entradas_vendidas": [int(ev), int(evc)], "mejordia": { "dia" : mejor_dia.strftime("%Y-%m-%d"), "entradas" : int(mejor_venta)}, "flujos" : flujo}
+	return {"entradas_vendidas": [int(ev), int(evc)], "mejordia": { "dia" : mejor_dia.strftime("%a %d"), "entradas" : int(mejor_venta)}, "flujos" : flujo}
 
 def reportes_ano(ano):
+	ano = int(ano)
 	fecha_reporte = "%d-01-01" % ano
 	connection = MySQLdb.connect(**connect_dict)
 	cur = connection.cursor()

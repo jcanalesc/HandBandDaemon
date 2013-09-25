@@ -73,6 +73,8 @@ def get_gente_actual():
 	ga = bdd.obtGenteActual()
 	return jsonify({"res":ga})
 
+
+
 @app.route("/emulaSalida")
 def emula_salida():
 	try:
@@ -143,13 +145,25 @@ def logear():
 	else:
 		return render_template("login.html", msg="Clave incorrecta.")
 
+@app.route("/applogin")
+@crossdomain(origin='*')
+def logea_movil():
+	user = request.args.get("user", None)
+	pswd = request.args.get("pass", None)
+
+	obj = {
+		"success": True
+	}
+
+	return jsonify(obj)
+
 
 @app.route("/appdata")
 @crossdomain(origin='*')
 def obt_datos_app():
 	objeto = {}
 	tiporeporte = request.args.get("tiporeporte", None)
-	fechareporte = [int(x) for x in request.args.get("reporte", None).split("/")]
+	fechareporte = [int(x) for x in request.args.get("reporte", None).split("/")] if request.args.get("reporte", None).find("/") != -1 else request.args.get("reporte", None)
 	objeto["reportes"] = {}
 	objeto["reportes"]["dia"] = []
 	objeto["reportes"]["mes"] = []
