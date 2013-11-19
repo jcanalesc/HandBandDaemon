@@ -1,6 +1,6 @@
 <VirtualHost *:8000>
 
-    WSGIDaemonProcess monitoreo user=www-data group=www-data threads=5
+    WSGIDaemonProcess monitoreo user=www-data group=www-data processes=5 threads=1
     WSGIScriptAlias / /usr/share/handbandd/monitoreo.wsgi
 
     <Directory /usr/share/handbandd>
@@ -8,6 +8,6 @@
         WSGIApplicationGroup %{GLOBAL}
         Order deny,allow
         Allow from all
-	AllowOverride None
+		AllowOverride None
     </Directory>
 </VirtualHost>

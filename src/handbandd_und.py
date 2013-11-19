@@ -45,7 +45,7 @@ class App():
         self.s_printers = {}
 
 
-    def generaImagen(self,barcode_img, segmento, fechaventa, debug=False):
+    def generaImagen(self,barcode_img, segmento, fechaventa, debug=False, nombreEvento=None):
         # TODO: Ordenar esta cosa
 
         lienzo = Image.new("1",(1710+780, 300), 1)
@@ -61,7 +61,7 @@ class App():
         imgweb2 = imgweb.rotate(90, expand=True).crop((1,0,31,300))
         imgweb2.load()
         imgweb = imgweb2
-
+        print 1
         lienzo.paste(imgweb, (0,0, 30, 300))
 
         w,h = barcode_img.size
@@ -72,20 +72,24 @@ class App():
         w,h = b.size
         topm = (lienzo.size[1] - h)/2
         # pegar codigo de barras
+        print 2
         lienzo.paste(b, (30, topm, w+30, h+topm))
         # pegar asignacion (normal-pref-vip)
-        asignacion = Image.new("1", (300,300), 1)
+        asignacion = Image.new("1", (500,300), 1)
         drawer = ImageDraw.Draw(asignacion)
 
-        tipo_asignacion = self.segmentos[segmento]
+        if nombreEvento is None:
+            tipo_asignacion = self.segmentos[segmento]
+        else:
+            tipo_asignacion = nombreEvento
 
         alt = int((300 - 80)/2)
         drawer.text((0, alt), tipo_asignacion, font=self.font)
-
-        lienzo.paste(asignacion,(30+w+10, 0, 30+w+310, 300))
+        print 3
+        lienzo.paste(asignacion,(30+w+10, 0, 30+w+510, 300))
 
         #pegar logo
-
+        print 4
         lienzo.paste(self.logo_img, (30+w+310+10, 0, 30+w+310+10+self.logo['w'], self.logo['h']))
 
         #pegar fechahora
@@ -97,7 +101,7 @@ class App():
         alt = int((300 - 80*2)/2)
         drawer.text((0,alt), fechaventap[0], font=self.font)
         drawer.text((0,alt+80), fechaventap[1], font=self.font)
-
+        print 5
         lienzo.paste (fechahora, (30+w+310+10+self.logo['w']+10, 0, 30+w+310+10+self.logo['w']+10+400, 300))
 
         if debug != False:
@@ -133,7 +137,7 @@ class App():
 
     def run(self):
         try:
-            os.chdir(WDIR)
+            #os.chdir(WDIR)
             time.sleep(1)
             logger.info("Demonio iniciado. CWD: %s" % (os.getcwd()))
 
@@ -208,7 +212,7 @@ class App():
                 # 4. Generar un código y enviarlo a la impresora.
                 # logger.info("SELECT id, codigo FROM `%s` WHERE estado = 0" % (table))
                 
-                lines = crs.execute("SELECT id, codigo, segmento,fecha_venta  FROM `%s` WHERE estado = %d" % (table, HABILITADO_PARA_IMPRESION))
+                lines = crs.execute("SELECT id, codigo, segmento,fecha_venta, id_evento  FROM `%s` WHERE estado = %d" % (table, HABILITADO_PARA_IMPRESION))
                 for row in crs.fetchall():
 
                     """
@@ -224,6 +228,7 @@ class App():
                     codigo_pulsera = row[1]
                     segmento = int(row[2])
                     fechaventa = row[3]
+                    id_evento = row[4]
 
                     impresora_objetivo = def_printer
                     if self.segmentos[segmento] in self.s_printers:
@@ -237,6 +242,11 @@ class App():
                     # IMPRIMIR
                     if codigo_pulsera[0] == "D":
                         img = self.generaImagen(barcode, segmento, str(fechaventa), codigo_pulsera)
+                    elif codigo_pulsera[4] == "E":
+                        crs.execute("select nombre, fecha from eventos where id = %s", (id_evento,))
+                        nombre, fecha = crs.fetchone()
+                        img = self.generaImagen(barcode, segmento, str(fecha), nombreEvento=nombre)
+
                     else:
                         img = self.generaImagen(barcode, segmento, str(fechaventa))
 
@@ -275,7 +285,6 @@ class App():
         except Exception as e:
             logger.error(e.__class__.__name__ +":"+ str(e))
 	logger.info("Finalizando")
-
 
 if __name__ == "__main__":
     app = App()

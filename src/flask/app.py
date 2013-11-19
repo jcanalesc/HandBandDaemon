@@ -8,7 +8,7 @@ import random
 import datetime
 import locale
 from functools import wraps, update_wrapper
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 reload(sys)
 sys.setdefaultencoding("utf-8")
@@ -109,7 +109,7 @@ def reportes():
 		r_dia = bdd.get_reportes_dia()
 		r_mes = bdd.get_reportes_mes()
 		r_ano = bdd.get_reportes_ano()
-		return render_template("reportes.html",rdia=r_dia, rmes=r_mes, rano=r_ano)
+		return render_template("reportes.html",rdia=r_dia, rmes=r_mes, rano=r_ano, now=datetime.now().strftime("%Y-%m-%d"))
 	else:
 		return render_template("login.html")
 
@@ -211,6 +211,14 @@ def obt_datos_app():
 			]
 		}
 	return jsonify(objeto)
+
+@app.route("/mkevento", methods=["POST"])
+def genera_evento():
+	fecha = request.form["fecha"]
+	nombre = request.form["nombre"]
+	nentradas = request.form["nentradas"]
+	res = bdd.genera_evento(fecha=fecha, nombre=nombre, nentradas=nentradas)
+	return jsonify(res)
 
 if __name__ == "__main__":
 	app.run("0.0.0.0",debug=True)

@@ -76,9 +76,9 @@ def agregar(cortesia):
 		codigosgte = int(linea[0]) + 1
 	else:
 		codigosgte = 1
-	cur.execute("insert into codigos (codigo, estado, segmento) values ('%06d', 1, %d)" % (codigosgte, seg))
+	cur.execute("insert into codigos (codigo, estado, segmento) values ('%07d', 1, %d)" % (codigosgte, seg))
 	if cortesia:
-		cur.execute("insert into historial (codigo) values ('%06d')" % codigosgte)
+		cur.execute("insert into historial (codigo) values ('%07d')" % codigosgte)
 	connection.commit()
 	cur.close()
 	connection.close()
@@ -104,6 +104,24 @@ def obtenerCantidades():
 	connection.close()
 	return (e_hoy, e_mes, e_total, e_hoy_c, e_mes_c, e_total_c)
 
+def genera_evento(fecha, nombre, nentradas):
+	connection = MySQLdb.connect(**connect_dict)
+	cur = connection.cursor()
+	resd = {}
+	cur.execute("insert into eventos (nombre, fecha) values (%s,%s)", (nombre, fecha))
+	eid = connection.insert_id()
+	codformat = "%04dE%02x"
+	segmento = 0
+	estado = 1
+	fechahora = "%s 16:00:00" % fecha
+	tuples = [(codformat % (i,eid), estado, segmento, eid, fechahora) for i in range(int(nentradas))]
+	cur.executemany("insert into codigos (codigo, estado, segmento, id_evento, fecha_venta) values (%s,%s,%s,%s,%s)", tuples)
+	connection.commit()
+	cur.close()
+	connection.close()
+	resd = { "success": True, "event_id": eid }
+	return resd
+
 """
 	FUNCIONES DE REPORTES
 """
@@ -112,17 +130,19 @@ def get_reportes_dia():
 	connection = MySQLdb.connect(**connect_dict)
 	cur = connection.cursor()
 	#start_date = datetime.datetime.today() - datetime.timedelta(days=10)
-	cur.execute("select MAX(DATE(TIMESTAMPADD(HOUR,-6,fecha_venta))) from codigos")
-	tmp = cur.fetchone()[0]
-	print tmp
-	start_date = datetime.datetime.strptime(tmp, "%Y-%m-%d")
-	start_date = start_date - datetime.timedelta(days=10)
-
-	start_date_string = start_date.strftime("%Y-%m-%d %H:%M:%S")
-	cur.execute("select DATE(TIMESTAMPADD(HOUR,-6,fecha_venta)) as df from codigos where DATE(TIMESTAMPADD(HOUR,-6,fecha_venta)) >= DATE(TIMESTAMPADD(HOUR,-6, '%s')) group by df order by df desc limit 10" % start_date_string)
 	res = []
-	for row in cur.fetchall():
-		res.append(row[0])
+	n = cur.execute("select MAX(DATE(TIMESTAMPADD(HOUR,-6,fecha_venta))) from codigos")
+	print n
+	if n > 0:
+		tmp = cur.fetchone()
+		if tmp[0] is not None:
+			start_date = datetime.datetime.strptime(tmp[0], "%Y-%m-%d")
+			start_date = start_date - datetime.timedelta(days=10)
+
+			start_date_string = start_date.strftime("%Y-%m-%d %H:%M:%S")
+			cur.execute("select DATE(TIMESTAMPADD(HOUR,-6,fecha_venta)) as df from codigos where DATE(TIMESTAMPADD(HOUR,-6,fecha_venta)) >= DATE(TIMESTAMPADD(HOUR,-6, '%s')) group by df order by df desc limit 10" % start_date_string)
+			for row in cur.fetchall():
+				res.append(row[0])
 	cur.close()
 	connection.close()
 	return res
