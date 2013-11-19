@@ -137,7 +137,7 @@ class App():
 
     def run(self):
         try:
-            #os.chdir(WDIR)
+            os.chdir(WDIR)
             time.sleep(1)
             logger.info("Demonio iniciado. CWD: %s" % (os.getcwd()))
 
