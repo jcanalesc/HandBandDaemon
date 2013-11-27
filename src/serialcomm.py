@@ -54,7 +54,10 @@ if __name__ == "__main__":
 							reject(cx, m) 
 						elif linea[1] + timedelta(hours=12) < datetime.today(): # codigo vencido
 							print "Codigo vencido"
-							reject(cx, m) 
+							reject(cx, m)
+						elif linea[1] > datetime.today():
+							print "Codigo no corresponde a la fecha actual"
+							reject(cx, m)
 						else:
 							# obtengo el último movimiento del codigo en cuestion
 							l = dbh.execute("select tipo, codigo, fecha from historial where codigo = '%s' order by fecha desc limit 1" % codigo_obtenido)

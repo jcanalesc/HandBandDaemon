@@ -13,9 +13,14 @@ import glob
 from daemon import runner
 from PIL import Image, ImageDraw, ImageFont
 import MySQLdb
+import sys
+
+
 
 #WDIR="/usr/share/handbandd/"
 WDIR="/usr/share/handbandd/"
+if len(sys.argv) > 1:
+    WDIR = sys.srgv[1]
 CONFIGFILE="configuracion.ini"
 
 NO_HABILITADO = 0
@@ -44,9 +49,17 @@ class App():
         self.logo = {}
         self.s_printers = {}
 
+    def get_nombre_socio(self, codigo):
+        cr = self.dbh.cursor()
+        cr.execute("select nombre from pulseras_socios join socios on (pulseras_socios.rut = socios.rut) where codigo = ?", (codigo,))
+        out = cr.fetchone()
+        if out != None:
+            return out[0]
+        return None
 
-    def generaImagen(self,barcode_img, segmento, fechaventa, debug=False, nombreEvento=None):
+    def generaImagen(self,barcode, segmento, fechaventa, debug=False, nombreEvento=None):
         # TODO: Ordenar esta cosa
+        barcode_img = Code128b.code128_image(str(barcode), self.bheight, self.bthickness)
 
         lienzo = Image.new("1",(1710+780, 300), 1)
 
@@ -61,7 +74,7 @@ class App():
         imgweb2 = imgweb.rotate(90, expand=True).crop((1,0,31,300))
         imgweb2.load()
         imgweb = imgweb2
-        print 1
+        
         lienzo.paste(imgweb, (0,0, 30, 300))
 
         w,h = barcode_img.size
@@ -72,7 +85,7 @@ class App():
         w,h = b.size
         topm = (lienzo.size[1] - h)/2
         # pegar codigo de barras
-        print 2
+        
         lienzo.paste(b, (30, topm, w+30, h+topm))
         # pegar asignacion (normal-pref-vip)
         asignacion = Image.new("1", (500,300), 1)
@@ -85,11 +98,11 @@ class App():
 
         alt = int((300 - 80)/2)
         drawer.text((0, alt), tipo_asignacion, font=self.font)
-        print 3
+        
         lienzo.paste(asignacion,(30+w+10, 0, 30+w+510, 300))
 
         #pegar logo
-        print 4
+        
         lienzo.paste(self.logo_img, (30+w+310+10, 0, 30+w+310+10+self.logo['w'], self.logo['h']))
 
         #pegar fechahora
@@ -98,10 +111,16 @@ class App():
         drawer = ImageDraw.Draw(fechahora)
         #drawer.text((0,20), "Emitido el", font=self.font)
         fechaventap = fechaventa.split(" ")
-        alt = int((300 - 80*2)/2)
+        alt = int((300 - 80*3)/2)
         drawer.text((0,alt), fechaventap[0], font=self.font)
         drawer.text((0,alt+80), fechaventap[1], font=self.font)
-        print 5
+
+        # si es un socio, imprimir su nombre
+        nombresocio = get_nombre_socio(barcode)
+        if nombresocio != None:
+            drawer.text((0, alt+160), nombresocio, font=self.font)
+
+        
         lienzo.paste (fechahora, (30+w+310+10+self.logo['w']+10, 0, 30+w+310+10+self.logo['w']+10+400, 300))
 
         if debug != False:
@@ -194,8 +213,8 @@ class App():
                             if printers[sprt]['printer-state'] not in [3,4]:
                                 logger.warning("La impresora \"%s\" no esta lista. Las pulseras quedaran encoladas hasta que la impresora este lista." % sprt)
 
-            bthickness = int(self.cfg.get("Barcode", "Thickness"))
-            bheight = int(self.cfg.get("Barcode", "Height"))
+            self.bthickness = int(self.cfg.get("Barcode", "Thickness"))
+            self.bheight = int(self.cfg.get("Barcode", "Height"))
 
             table = self.cfg.get("Database", "Tablename")
             
@@ -235,18 +254,19 @@ class App():
                         impresora_objetivo = self.s_printers[self.segmentos[segmento]]
 
 
-                    barcode = Code128b.code128_image(str(codigo_pulsera), bheight, bthickness)
+                    
+                    barcode = str(codigo_pulsera)
 
                     logger.info("Imprimiendo pulsera: %s - ID: %d Segmento: %s " % (str(codigo_pulsera), id_pulsera, self.segmentos[segmento]))
 
                     # IMPRIMIR
+                    # Asumimos códigos de largo 7. Ajustar si se cambia el largo
                     if codigo_pulsera[0] == "D":
                         img = self.generaImagen(barcode, segmento, str(fechaventa), codigo_pulsera)
                     elif codigo_pulsera[4] == "E":
                         crs.execute("select nombre, fecha from eventos where id = %s", (id_evento,))
                         nombre, fecha = crs.fetchone()
                         img = self.generaImagen(barcode, segmento, str(fecha), nombreEvento=nombre)
-
                     else:
                         img = self.generaImagen(barcode, segmento, str(fechaventa))
 
@@ -258,7 +278,7 @@ class App():
                     res = self.cups_conn.printFile(impresora_objetivo,
                              rutaarchivo,
                             "job_"+str(codigo_pulsera)+time.strftime("%Y%m%d%H%M%S"), 
-                            {"media":"Custom.1x8.85in","orientation-requested":"4"})
+                            {"media":"Custom.1x8.85in", "PageSize":"Custom.1x8.85in","orientation-requested":"4"})
 
                     logger.info("[cups]: %s", str(res))
                     

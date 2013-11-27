@@ -4,9 +4,13 @@ import datetime
 import time
 import ConfigParser
 import os
+import sys
 
 cp = ConfigParser.ConfigParser()
-print os.getcwd()
+wdir = "/usr/share/handbandd/"
+if len(sys.argv) > 1:
+	wdir = sys.argv[1]
+os.chdir(wdir)
 cp.read("../configuracion.ini")
 connect_dict = {
 	"host": cp.get("Database", "Host"),
@@ -22,13 +26,13 @@ def obtGenteActual():
 	cur = connection.cursor()
 	resc = 0
 	resg = 0
-	cur.execute("select tipo, count(*) as conteo from (select tipo, fecha from historial left join codigos on (historial.codigo = codigos.codigo) where codigos.segmento = 1) as f where DATE(TIMESTAMPADD(HOUR,-6,f.fecha)) = DATE(TIMESTAMPADD(HOUR,-6,NOW())) group by tipo")
+	cur.execute("select tipo, count(*) as conteo from (select tipo, fecha from historial left join codigos on (historial.codigo = codigos.codigo) where codigos.segmento = 1 and DATE(TIMESTAMPADD(HOUR, -6, fecha)) = DATE(TIMESTAMPADD(HOUR, -6, NOW()))) as f group by tipo")
 	for row in cur.fetchall():
 		if row[0] == "Entrada":
 			resc += row[1]
 		else:
 			resc -= row[1]
-	cur.execute("select tipo, count(*) as conteo from (select tipo, fecha from historial left join codigos on (historial.codigo = codigos.codigo) where codigos.segmento = 0) as f  where DATE(TIMESTAMPADD(HOUR,-6,f.fecha)) = DATE(TIMESTAMPADD(HOUR,-6,NOW())) group by tipo")
+	cur.execute("select tipo, count(*) as conteo from (select tipo, fecha from historial left join codigos on (historial.codigo = codigos.codigo) where codigos.segmento = 0 and DATE(TIMESTAMPADD(HOUR, -6, fecha)) = DATE(TIMESTAMPADD(HOUR, -6, NOW()))) as f group by tipo")
 	for row in cur.fetchall():
 		if row[0] == "Entrada":
 			resg += row[1]
@@ -73,7 +77,7 @@ def agregar(cortesia):
 	linea = cur.fetchone()
 	codigosgte = 0
 	if linea[0] != None:
-		codigosgte = int(linea[0]) + 1
+		codigosgte = int(linea[0], 10) + 1
 	else:
 		codigosgte = 1
 	cur.execute("insert into codigos (codigo, estado, segmento) values ('%07d', 1, %d)" % (codigosgte, seg))
@@ -83,6 +87,18 @@ def agregar(cortesia):
 	cur.close()
 	connection.close()
 	return True
+
+def imprimeSocio(rutsocio):
+	with MySQLdb.connect(**connect_dict) as db:
+		cur = db.cursor()
+		cur.execute("select max(codigo) as mc from codigos")
+		linea = cur.fetchone()
+		if linea is None:
+			linea = "0"
+		mc = int(linea[0], 10) + 1
+		cod = "%07d" % mc
+		cur.execute("insert into codigos (codigo, estado, segmento) values (?, 1, 0)", (cod,))
+		cur.execute("insert into pulseras_socios (rut, codigo) values (?, ?)", (rutsocio, cod))
 
 def obtenerCantidades():
 	connection = MySQLdb.connect(**connect_dict)
@@ -107,13 +123,13 @@ def obtenerCantidades():
 def genera_evento(fecha, nombre, nentradas):
 	connection = MySQLdb.connect(**connect_dict)
 	cur = connection.cursor()
+	fechahora = "%s 18:00:00" % fecha
 	resd = {}
-	cur.execute("insert into eventos (nombre, fecha) values (%s,%s)", (nombre, fecha))
+	cur.execute("insert into eventos (nombre, fecha) values (%s,%s)", (nombre, fechahora))
 	eid = connection.insert_id()
 	codformat = "%04dE%02x"
 	segmento = 0
 	estado = 1
-	fechahora = "%s 16:00:00" % fecha
 	tuples = [(codformat % (i,eid), estado, segmento, eid, fechahora) for i in range(int(nentradas))]
 	cur.executemany("insert into codigos (codigo, estado, segmento, id_evento, fecha_venta) values (%s,%s,%s,%s,%s)", tuples)
 	connection.commit()

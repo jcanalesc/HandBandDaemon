@@ -220,5 +220,17 @@ def genera_evento():
 	res = bdd.genera_evento(fecha=fecha, nombre=nombre, nentradas=nentradas)
 	return jsonify(res)
 
+@app.route("/ingresarSocio")
+def ingresasocio():
+	rutsocio = request.args.get("rut", None)
+	res = { 'success': True }
+	try:
+		bdd.imprimeSocio(rutsocio)
+	except:
+		res["success"] = False
+
+	return jsonify(res)
+
+
 if __name__ == "__main__":
 	app.run("0.0.0.0",debug=True)

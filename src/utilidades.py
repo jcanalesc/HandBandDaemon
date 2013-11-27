@@ -17,7 +17,6 @@ def getFromSerial(cx):
 			log_this("respuesta: " + ans)
 			return ans
 		
-
 def getParts(s):
 	d = {}
 	d['dir_torniquete'] = s[0:2]

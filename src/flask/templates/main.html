@@ -83,10 +83,15 @@
        <div class="span4">
           <button class="btn btn-large btn-danger" id="btn-vaciar">Vaciar recinto</button>
         </div>
-        {#
+        
         <div class="span4">
-          
-          <div>
+            Rut:
+            <div class="input-append" id="imprime-socio">
+              <input type="text" class="input-medium" />
+              <button class="btn">Imprimir socio</button>
+            </div>
+        <div>
+          {#
             <table>
               <tr>
                 <td></td><td>General</td><td>Cortesía</td><td>Total</td>
@@ -293,6 +298,19 @@
         }
       });
     }
+    function ingresarSocioKey(ev)
+    {
+      if (ev.which == 13)
+        ingresarSocio();
+    }
+    function ingresarSocio()
+    {
+        var rut = $("#imprime-socio input").val();
+        $.getJSON("/ingresarSocio/", { rut: rut }, function(obj)
+        {
+          $("#imprime-socio input").val("");
+        });
+    }
     $(function()
     {
     	for(var i = 0; i < ndatos; i++)
@@ -306,6 +324,8 @@
       $("#btn-vaciar").click(vaciarRegistros);
       $("#btn-agregar").click(agregarPersona);
       $("#btn-cortesia").click(agregarPersonaCortesia);
+      $("#imprime-socio button").click(ingresarSocio);
+      $("#imprime-socio input").keydown(ingresarSocioKey);
     });
     </script>
     {% endblock scripts %}
