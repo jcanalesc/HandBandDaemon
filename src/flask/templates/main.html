@@ -88,7 +88,7 @@
             Rut:
             <div class="input-append" id="imprime-socio">
               <input type="text" class="input-medium" />
-              <button class="btn">Imprimir socio</button>
+              <button class="btn">Imprimir pulsera socio</button>
             </div>
         <div>
           {#
@@ -308,7 +308,10 @@
         var rut = $("#imprime-socio input").val();
         $.getJSON("/ingresarSocio/", { rut: rut }, function(obj)
         {
-          $("#imprime-socio input").val("");
+          if (obj.success == true)
+            $("#imprime-socio input").val("");
+          else
+            alert("El rut ingresado no es socio.");
         });
     }
     $(function()

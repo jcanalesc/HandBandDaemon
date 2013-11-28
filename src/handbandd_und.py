@@ -20,7 +20,7 @@ import sys
 #WDIR="/usr/share/handbandd/"
 WDIR="/usr/share/handbandd/"
 if len(sys.argv) > 1:
-    WDIR = sys.srgv[1]
+    WDIR = sys.argv[1]
 CONFIGFILE="configuracion.ini"
 
 NO_HABILITADO = 0
@@ -51,7 +51,7 @@ class App():
 
     def get_nombre_socio(self, codigo):
         cr = self.dbh.cursor()
-        cr.execute("select nombre from pulseras_socios join socios on (pulseras_socios.rut = socios.rut) where codigo = ?", (codigo,))
+        cr.execute("select nombre from pulseras_socios join socios on (pulseras_socios.rut = socios.rut) where codigo = %s", (codigo))
         out = cr.fetchone()
         if out != None:
             return out[0]
@@ -116,7 +116,7 @@ class App():
         drawer.text((0,alt+80), fechaventap[1], font=self.font)
 
         # si es un socio, imprimir su nombre
-        nombresocio = get_nombre_socio(barcode)
+        nombresocio = self.get_nombre_socio(barcode)
         if nombresocio != None:
             drawer.text((0, alt+160), nombresocio, font=self.font)
 
@@ -240,6 +240,8 @@ class App():
                     el driver USB.
                     Solucion:
                     Reiniciar el dispositivo USB.
+
+                    UPDATE: No es necesario, el bug solo se presenta usando el sistema en un entorno virtualizado. (VirtualBox)
                     """
                     #subprocess.call(["usb_modeswitch -R -v 0a5f -p 008b > /dev/null"], shell=True)
 
@@ -264,13 +266,12 @@ class App():
                     if codigo_pulsera[0] == "D":
                         img = self.generaImagen(barcode, segmento, str(fechaventa), codigo_pulsera)
                     elif codigo_pulsera[4] == "E":
-                        crs.execute("select nombre, fecha from eventos where id = %s", (id_evento,))
+                        crs.execute("select nombre, fecha from eventos where id = ?", (id_evento,))
                         nombre, fecha = crs.fetchone()
                         img = self.generaImagen(barcode, segmento, str(fecha), nombreEvento=nombre)
                     else:
                         img = self.generaImagen(barcode, segmento, str(fechaventa))
-
-                    rutaarchivo = os.getcwd() + "/tmp/tmpfile_%s.png" % codigo_pulsera
+                    rutaarchivo = os.getcwd() + "/tmp/tmpfile_%s.png" % barcode
 
                     img.save(rutaarchivo)
 
@@ -302,8 +303,8 @@ class App():
             logger.error("La conexión a la base de datos falló")
         except MySQLdb.DatabaseError as de:
             logger.error("Ha ocurrido un error en la base de datos: %s" % (str(de)))
-        except Exception as e:
-            logger.error(e.__class__.__name__ +":"+ str(e))
+#        except Exception as e:
+#            logger.error(e.__class__.__name__ +":"+ str(e))
 	logger.info("Finalizando")
 
 if __name__ == "__main__":

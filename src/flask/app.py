@@ -9,6 +9,8 @@ import datetime
 import locale
 from functools import wraps, update_wrapper
 from datetime import timedelta, datetime
+import httplib2
+import json
 
 reload(sys)
 sys.setdefaultencoding("utf-8")
@@ -220,7 +222,7 @@ def genera_evento():
 	res = bdd.genera_evento(fecha=fecha, nombre=nombre, nentradas=nentradas)
 	return jsonify(res)
 
-@app.route("/ingresarSocio")
+@app.route("/ingresarSocio/")
 def ingresasocio():
 	rutsocio = request.args.get("rut", None)
 	res = { 'success': True }
@@ -228,9 +230,19 @@ def ingresasocio():
 		bdd.imprimeSocio(rutsocio)
 	except:
 		res["success"] = False
-
 	return jsonify(res)
 
+@app.route("/syncUserDB")
+def sincroniza():
+	res = {'success': True}
+	try:
+		ho = httplib2.Http(".cache")
+		resp, content = ho.request("http://186.64.120.145:5000/userdb/download/")
+		obj = json.loads(content)
+		bdd.insertaUsuarios(obj)
+	except:
+		res["success"] = False
+	return jsonify(res)
 
 if __name__ == "__main__":
 	app.run("0.0.0.0",debug=True)

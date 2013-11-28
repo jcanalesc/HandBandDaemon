@@ -89,16 +89,22 @@ def agregar(cortesia):
 	return True
 
 def imprimeSocio(rutsocio):
-	with MySQLdb.connect(**connect_dict) as db:
-		cur = db.cursor()
-		cur.execute("select max(codigo) as mc from codigos")
+	with MySQLdb.connect(**connect_dict) as cur:
+		cur.execute("select count(rut) from socios where rut = %s", rutsocio)
+		if cur.fetchone()[0] == 0:
+			raise Exception("Rut no es socio")
+		cur.execute("select max(codigo) as mc from codigos where POSITION('E' IN codigo) = 0")
 		linea = cur.fetchone()
 		if linea is None:
-			linea = "0"
+			linea = ["0"]
 		mc = int(linea[0], 10) + 1
 		cod = "%07d" % mc
-		cur.execute("insert into codigos (codigo, estado, segmento) values (?, 1, 0)", (cod,))
-		cur.execute("insert into pulseras_socios (rut, codigo) values (?, ?)", (rutsocio, cod))
+		cur.execute("insert into codigos (codigo, estado, segmento) values (%s, 1, 0)", (cod,))
+		cur.execute("insert into pulseras_socios (rut, codigo) values (%s, %s)", (rutsocio, cod))
+
+def insertaUsuarios(usrlist):
+	with MySQLdb.connect(**connect_dict) as cur:
+		cur.executemany("insert ignore into socios (rut, nombre) values (%s,%s)", [(x['rut'], x['nombre']) for x in usrlist])
 
 def obtenerCantidades():
 	connection = MySQLdb.connect(**connect_dict)

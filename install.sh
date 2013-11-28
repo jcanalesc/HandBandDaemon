@@ -2,7 +2,7 @@
 echo "Instalando Python y dependencias" &&
 apt-get -y install python2.7-dev python-pip python-mysqldb apache2 libapache2-mod-wsgi python-serial cups &&
 echo "Instalando modulos de Python" &&
-pip install python-daemon lockfile pycups Pillow Flask &&
+pip install python-daemon lockfile pycups Pillow Flask httplib2 &&
 echo "Creando estructura de directorios" &&
 mkdir -p /usr/share/handbandd/tmp/ &&
 cp -R src/* /usr/share/handbandd/ &&
