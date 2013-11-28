@@ -103,8 +103,14 @@ def imprimeSocio(rutsocio):
 		cur.execute("insert into pulseras_socios (rut, codigo) values (%s, %s)", (rutsocio, cod))
 
 def insertaUsuarios(usrlist):
-	with MySQLdb.connect(**connect_dict) as cur:
-		cur.executemany("insert ignore into socios (rut, nombre) values (%s,%s)", [(x['rut'], x['nombre']) for x in usrlist])
+	db = MySQLdb.connect(**connect_dict)
+	cur = db.cursor()
+	cur.executemany("insert ignore into socios (rut, nombre) values (%s,%s)", [(x['rut'], x['nombre']) for x in usrlist])
+	ar = db.affected_rows()
+	db.commit()
+	cur.close()
+	db.close()
+	return ar
 
 def obtenerCantidades():
 	connection = MySQLdb.connect(**connect_dict)

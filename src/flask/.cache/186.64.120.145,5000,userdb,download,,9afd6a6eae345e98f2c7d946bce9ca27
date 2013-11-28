@@ -1,0 +1,10 @@
+status: 200
+access-control-allow-methods: POST,GET,OPTIONS,PUT,DELETE
+content-location: http://186.64.120.145:5000/userdb/download/
+server: WSGIServer/0.1 Python/2.7.3
+date: Thu, 28 Nov 2013 16:45:46 GMT
+access-control-allow-origin: *
+access-control-allow-headers: *
+content-type: application/json
+
+[{"nombre": "daniel Ort\u00fazar", "rut": "16020095-2"}, {"nombre": "nicolas rojo", "rut": "16605862-7"}, {"nombre": "Juan Canales", "rut": "17596597-1"}, {"nombre": "Ader Canales", "rut": "5339622-4"}]

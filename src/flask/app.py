@@ -239,9 +239,11 @@ def sincroniza():
 		ho = httplib2.Http(".cache")
 		resp, content = ho.request("http://186.64.120.145:5000/userdb/download/")
 		obj = json.loads(content)
-		bdd.insertaUsuarios(obj)
-	except:
+		usercount = bdd.insertaUsuarios(obj)
+		res["usercount"] = usercount
+	except Exception as e:
 		res["success"] = False
+		res["error"] = str(e)
 	return jsonify(res)
 
 if __name__ == "__main__":
